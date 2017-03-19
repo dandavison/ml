@@ -1,6 +1,8 @@
+from collections import Counter
 from random import shuffle
 
 import numpy as np
+from numpy import log2
 
 
 def contrast_normalize(X):
@@ -98,3 +100,42 @@ def random_partition(X, y, n):
         X[row_indices[n:]],
         y[row_indices[n:]],
     )
+
+
+def inverse_permutation(x):
+    """
+    Return the indices that arrange x in sorted order.
+
+    Same as np.argsort(x), but O(n) instead of O(n log(n)).
+
+    http://arogozhnikov.github.io/2015/09/29/NumpyTipsAndTricks1.html
+    """
+    px = np.empty(len(x), dtype=np.int)
+    px[x] = range(len(x))
+    return px
+
+
+def entropy(counts):
+    """
+    Entropy of probability distribution estimated from counts.
+
+    -\sum p_i log p_i = -\sum (n_i/N) log (n_i/N)
+                      = log N - (1/N) \sum n_i log n_i
+
+    >>> entropy([]) == entropy([1]) == 0
+    True
+    >>> entropy([1, 1]) == entropy([2, 2]) == 1
+    True
+    >>> from math import log2
+    >>> entropy([1, 1, 1]) == entropy([2, 2, 2]) == log2(3)
+    True
+    """
+    n_total = sum(counts)
+    if False:
+        pp = [n / n_total for n in counts]
+        return -sum(p * log2(p) for p in pp)
+    else:
+        if n_total == 0:
+            return 0.0
+        else:
+            return log2(n_total) - sum(n * log2(n) for n in counts) / n_total
