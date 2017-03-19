@@ -31,10 +31,11 @@ class DecisionTreeData(np.ndarray):
 
 class Node:
 
-    def __init__(self, left=None, right=None, feature=None, label=None):
+    def __init__(self, left=None, right=None, feature=None, decision_boundary=None, label=None):  # noqa
         self.left = None
         self.right = None
         self.feature = feature
+        self.decision_boundary = None
         self.label = label
 
 
@@ -44,21 +45,22 @@ def grow_tree(data):
         [c] = labels
         return Node(label=c)
     else:
-        left, right, feature = choose_partition(data)
+        left, right, feature, decision_boundary = choose_partition(data)
         return Node(grow_tree(left),
                     grow_tree(right),
-                    feature)
+                    feature,
+                    decision_boundary)
 
 
 def choose_partition(data):
     n, d = data.X.shape
-    partition, j, score = max(
-        ((partition, j, score)
+    partition, j, decision_boundary, score = max(
+        ((partition, j, decision_boundary, score)
          for j in range(d)
-         for (partition, score) in get_feature_partitions(data[:, [j, -1]])),
-        key=lambda partition, j, score: score)
+         for (partition, decision_boundary, score) in get_feature_partitions(data[:, [j, -1]])),
+        key=lambda partition, j, decision_boundary, score: score)
     left, right = data[~partition, :], data[partition, :]
-    return left, right, j
+    return left, right, j, decision_boundary
 
 
 def get_feature_partitions(data):
@@ -75,7 +77,9 @@ def get_feature_partitions(data):
     >>> from numpy import log2
     >>> data = np.array([[1.2, 0.7, 2.2, 5.1, 6.2], [0, 0, 1, 0, 1]]).T
     >>> partitions = get_feature_partitions(data)
-    >>> partition, score = next(partitions)
+    >>> partition, score, decision_boundary = next(partitions)
+    >>> decision_boundary == 0.7
+    True
     >>> list(partition)  # Note that the first two rows are switched when sorted by feature value  # noqa
     [True, False, True, True, True]
     >>> # |         | left | right |
@@ -85,7 +89,9 @@ def get_feature_partitions(data):
     >>> # | entropy |    0 | 1     |
     >>> score == 0.8
     True
-    >>> partition, score = next(partitions)
+    >>> partition, score, decision_boundary = next(partitions)
+    >>> decision_boundary == 1.2
+    True
     >>> list(partition)
     [False, False, True, True, True]
     >>> # |         | left | right                              |
@@ -107,13 +113,14 @@ def get_feature_partitions(data):
 
     left_counts = Counter()
 
-    curr, _ = data[0]
+    decision_boundary, _ = data[0]
     for i, (x, y) in enumerate(data):
-        if x > curr:
+        if x > decision_boundary:
             partition = np.zeros(n, dtype=np.bool)
             partition[inv_sort_permutation[i:]] = True
             score = weighted_average_entropy(left_counts, counts - left_counts)
-            yield partition, score
+            yield partition, score, decision_boundary
+            decision_boundary = x
         left_counts[y] += 1
 
 
