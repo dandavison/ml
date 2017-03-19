@@ -90,31 +90,32 @@ def get_feature_partitions(data):
     average of the entropies of the left and right label distributions.
 
     >>> from numpy import log2
-    >>> data = np.array([[1.2, 0.7, 2.2, 5.1, 6.2], [0, 0, 1, 0, 1]]).T
+    >>> approximately_equal = lambda x, y: abs(x - y) < 1e-15
+    >>> data = np.array([[1.2, 0.7, 0.7, 2.2, 5.1, 6.2], [0, 0, 0, 1, 0, 1]]).T
     >>> partitions = get_feature_partitions(data)
     >>> partition, score, decision_boundary = next(partitions)
     >>> decision_boundary == 0.7
     True
-    >>> list(partition)  # Note that the first two rows are switched when sorted by feature value  # noqa
-    [True, False, True, True, True]
+    >>> list(partition)  # Note that the first row comes after the second and third when sorted by feature value  # noqa
+    [True, False, False, True, True, True]
     >>> # |         | left | right |
     >>> # |---------+------+-------|
-    >>> # | counts  |  1,0 | 2, 2  |
-    >>> # | weight  |  1/5 | 4/5   |
+    >>> # | counts  |  2,0 | 2, 2  |
+    >>> # | weight  |  2/6 | 4/6   |
     >>> # | entropy |    0 | 1     |
-    >>> score == 0.8
+    >>> score == 2/3
     True
     >>> partition, score, decision_boundary = next(partitions)
     >>> decision_boundary == 1.2
     True
     >>> list(partition)
-    [False, False, True, True, True]
+    [False, False, False, True, True, True]
     >>> # |         | left | right                              |
     >>> # |---------+------+------------------------------------|
-    >>> # | counts  | 2,0  | 1, 2                               |
-    >>> # | weight  | 2/5  | 3/5                                |
+    >>> # | counts  | 3,0  | 1, 2                               |
+    >>> # | weight  | 3/6  | 3/6                                |
     >>> # | entropy | 0    | -(1/3)*log2(1/3) - (2/3)*log2(2/3) |
-    >>> score == -(3/5)*( (1/3)*log2(1/3) + (2/3)*log2(2/3) )
+    >>> approximately_equal(score, -(1/2)*( (1/3)*log2(1/3) + (2/3)*log2(2/3)))
     True
     """
     n, d = data.shape
@@ -122,7 +123,6 @@ def get_feature_partitions(data):
     counts = Counter(data[:, 1])
     sort_permutation = data[:, 0].argsort()
     data = data[sort_permutation, :]
-    inv_sort_permutation = inverse_permutation(sort_permutation)
 
     n, _ = data.shape
 
@@ -132,7 +132,7 @@ def get_feature_partitions(data):
     for i, (x, y) in enumerate(data):
         if x > decision_boundary:
             partition = np.zeros(n, dtype=np.bool)
-            partition[inv_sort_permutation[i:]] = True
+            partition[sort_permutation[i:]] = True
             score = weighted_average_entropy(left_counts, counts - left_counts)
             yield partition, score, decision_boundary
             decision_boundary = x
