@@ -17,6 +17,9 @@ class DecisionTree:
         data = np.hstack([X, y]).view(DecisionTreeData)
         self.tree = grow_tree(data)
 
+    def predict(x):
+        return self.tree.predict(x)
+
 
 class DecisionTreeData(np.ndarray):
 
@@ -37,6 +40,18 @@ class Node:
         self.feature = feature
         self.decision_boundary = None
         self.label = label
+
+    @property
+    def is_leaf(self):
+        return self.label is not None
+
+    def predict(self, x):
+        if self.is_leaf:
+            return self.label
+        elif x[self.feature] <= self.decision_boundary:
+            return self.left.predict(x)
+        else:
+            return self.right.predict(x)
 
 
 def grow_tree(data):
