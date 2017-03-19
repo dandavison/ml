@@ -87,6 +87,13 @@ def mean(iterable):
     return total / n
 
 
+def starmin(iterable, key=None):
+    """
+    Mitigate sadness about removal of tuple-unpacking in python3.
+    """
+    return min(iterable, key=(lambda item: key(*item)) if key else None)
+
+
 def random_partition(X, y, n):
     """
     Split into n rows and remaining rows, after shuffling.

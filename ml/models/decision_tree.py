@@ -3,22 +3,30 @@ from collections import Counter
 import numpy as np
 from numpy import log2
 
+from ml.models import Classifier
 from ml.utils import entropy
 from ml.utils import inverse_permutation
 from ml.utils import mean
+from ml.utils import starmin
 
 
-class DecisionTree:
+class DecisionTree(Classifier):
 
-    def __init__(self):
+    def __init__(self, verbose=False):
         self.tree = None
+        self.verbose=verbose
 
-    def fit(X, y):
+    def fit(self, X, y):
         data = np.hstack([X, y]).view(DecisionTreeData)
-        self.tree = grow_tree(data)
+        if self.verbose:
+            print("Fitting decision tree: %d observations x %d features" % data.shape)
+        self.tree = grow_tree(data, verbose=self.verbose)
 
-    def predict(x):
-        return self.tree.predict(x)
+    def predict(self, X):
+        return np.array([self.tree.predict(x) for x in X])
+
+    def describe(self):
+        self.tree.describe()
 
 
 class DecisionTreeData(np.ndarray):
@@ -34,12 +42,20 @@ class DecisionTreeData(np.ndarray):
 
 class Node:
 
-    def __init__(self, left=None, right=None, feature=None, decision_boundary=None, label=None):  # noqa
-        self.left = None
-        self.right = None
+    def __init__(self,
+                 left=None,
+                 right=None,
+                 feature=None,
+                 decision_boundary=None,
+                 label=None,
+                 counts=False):
+
+        self.left = left
+        self.right = right
         self.feature = feature
-        self.decision_boundary = None
+        self.decision_boundary = decision_boundary
         self.label = label
+        self.counts = counts
 
     @property
     def is_leaf(self):
@@ -53,29 +69,70 @@ class Node:
         else:
             return self.right.predict(x)
 
+    def __repr__(self):
+        context = dict(vars(self),
+                       self_id=id(self),
+                       left_id=id(self.left),
+                       right_id=id(self.right))
+        if self.is_leaf:
+            return 'Node {self_id}: class {label}'.format(**context)
+        else:
+            return (
+                'Node {self_id}: if feature {feature} <= {decision_boundary}, '
+                'go to node {left_id}, else {right_id}.'.format(**context))
 
-def grow_tree(data):
-    labels = set(y)
+    def describe(self):
+        print(self)
+        if not self.is_leaf:
+            self.left.describe()
+            self.right.describe()
+
+
+def grow_tree(data, verbose=False):
+    if verbose:
+        print(data.shape)
+    label_counts = Counter(data.y)
+    labels = label_counts.keys()
     if len(labels) == 1:
         [c] = labels
-        return Node(label=c)
+        node = Node(label=c, counts=label_counts)
     else:
-        left, right, feature, decision_boundary = choose_partition(data)
-        return Node(grow_tree(left),
-                    grow_tree(right),
-                    feature,
-                    decision_boundary)
+        partition = choose_partition(data)
+        left, right = data[partition.partition, :], data[~partition.partition, :]
+        n_right, d = right.shape
+        if n_right == 0:
+            # All features are constant on this subset of sample points
+            label = label_counts.most_common()[0][0]
+            node = Node(label=label, counts=label_counts)
+        else:
+            node = Node(grow_tree(left, verbose=verbose),
+                        grow_tree(right, verbose=verbose),
+                        partition.feature,
+                        partition.decision_boundary)
+    if verbose:
+        print(node, flush=True)
+
+    return node
+
+
+
+class Partition:
+    def __init__(self, decision_boundary, partition, score, feature=None):
+        self.decision_boundary = decision_boundary
+        self.partition = partition
+        self.score = score
+        self.feature = feature
 
 
 def choose_partition(data):
     n, d = data.X.shape
-    partition, j, decision_boundary, score = max(
-        ((partition, j, decision_boundary, score)
+    j, partition = starmin(
+        ((j, partition)
          for j in range(d)
-         for (partition, decision_boundary, score) in get_feature_partitions(data[:, [j, -1]])),
-        key=lambda partition, j, decision_boundary, score: score)
-    left, right = data[~partition, :], data[partition, :]
-    return left, right, j, decision_boundary
+         for partition in get_feature_partitions(data[:, [j, -1]])),
+        key=lambda j, partition: partition.score)
+    partition.feature = j
+    return partition
 
 
 def get_feature_partitions(data):
@@ -92,36 +149,38 @@ def get_feature_partitions(data):
     >>> from numpy import log2
     >>> approximately_equal = lambda x, y: abs(x - y) < 1e-15
     >>> data = np.array([[1.2, 0.7, 0.7, 2.2, 5.1, 6.2], [0, 0, 0, 1, 0, 1]]).T
+    >>> data = data.view(DecisionTreeData)
     >>> partitions = get_feature_partitions(data)
-    >>> partition, score, decision_boundary = next(partitions)
-    >>> decision_boundary == 0.7
+    >>> partition = next(partitions)
+    >>> partition.decision_boundary == 0.7
     True
-    >>> list(partition)  # Note that the first row comes after the second and third when sorted by feature value  # noqa
-    [True, False, False, True, True, True]
+    >>> # Note that the first row comes after the second and third when sorted by feature value  # noqa
+    >>> list(partition.partition)
+    [False, True, True, False, False, False]
     >>> # |         | left | right |
     >>> # |---------+------+-------|
     >>> # | counts  |  2,0 | 2, 2  |
     >>> # | weight  |  2/6 | 4/6   |
     >>> # | entropy |    0 | 1     |
-    >>> score == 2/3
+    >>> partition.score == 2/3
     True
-    >>> partition, score, decision_boundary = next(partitions)
-    >>> decision_boundary == 1.2
+    >>> partition = next(partitions)
+    >>> partition.decision_boundary == 1.2
     True
-    >>> list(partition)
-    [False, False, False, True, True, True]
+    >>> list(partition.partition)
+    [True, True, True, False, False, False]
     >>> # |         | left | right                              |
     >>> # |---------+------+------------------------------------|
     >>> # | counts  | 3,0  | 1, 2                               |
     >>> # | weight  | 3/6  | 3/6                                |
     >>> # | entropy | 0    | -(1/3)*log2(1/3) - (2/3)*log2(2/3) |
-    >>> approximately_equal(score, -(1/2)*( (1/3)*log2(1/3) + (2/3)*log2(2/3)))
+    >>> approximately_equal(partition.score, -(1/2)*( (1/3)*log2(1/3) + (2/3)*log2(2/3)))  # noqa
     True
     """
     n, d = data.shape
     assert n > 1 and d == 2
-    counts = Counter(data[:, 1])
-    sort_permutation = data[:, 0].argsort()
+    counts = Counter(data.y)
+    sort_permutation = data.X.ravel().argsort()
     data = data[sort_permutation, :]
 
     n, _ = data.shape
@@ -129,14 +188,21 @@ def get_feature_partitions(data):
     left_counts = Counter()
 
     decision_boundary, _ = data[0]
+    zero_feature_variance = True
     for i, (x, y) in enumerate(data):
         if x > decision_boundary:
-            partition = np.zeros(n, dtype=np.bool)
-            partition[sort_permutation[i:]] = True
+            partition = np.ones(n, dtype=np.bool)
+            partition[sort_permutation[i:]] = False
             score = weighted_average_entropy(left_counts, counts - left_counts)
-            yield partition, score, decision_boundary
+            yield Partition(decision_boundary, partition, score)
             decision_boundary = x
+            zero_feature_variance = False
         left_counts[y] += 1
+
+    if zero_feature_variance:
+        partition = np.ones(n, dtype=np.bool)
+        score = weighted_average_entropy(left_counts, counts - left_counts)
+        yield Partition(x, partition, score)
 
 
 def weighted_average_entropy(*counters):
