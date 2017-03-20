@@ -12,15 +12,18 @@ from ml.utils import starmin
 
 class DecisionTree(Classifier):
 
-    def __init__(self, verbose=False):
+    def __init__(self, feature_names=None, verbose=False):
         self.tree = None
         self.verbose=verbose
+        self.feature_names = feature_names
 
     def fit(self, X, y):
         data = np.hstack([X, y]).view(DecisionTreeData)
         if self.verbose:
             print("Fitting decision tree: %d observations x %d features" % data.shape)
-        self.tree = grow_tree(data, verbose=self.verbose)
+        self.tree = grow_tree(data,
+                              feature_names=self.feature_names,
+                              verbose=self.verbose)
 
     def predict(self, X):
         return np.array([self.tree.predict(x) for x in X])
@@ -48,7 +51,8 @@ class Node:
                  feature=None,
                  decision_boundary=None,
                  label=None,
-                 counts=False):
+                 counts=False,
+                 feature_names=None):
 
         self.left = left
         self.right = right
@@ -56,10 +60,21 @@ class Node:
         self.decision_boundary = decision_boundary
         self.label = label
         self.counts = counts
+        self.feature_names = feature_names
+
 
     @property
     def is_leaf(self):
         return self.label is not None
+
+    @property
+    def feature_name(self):
+        if self.feature is None:
+            return None
+        elif self.feature_names is not None:
+            return self.feature_names[self.feature]
+        else:
+            return 'feature %d' % self.feature
 
     def predict(self, x):
         if self.is_leaf:
@@ -73,12 +88,13 @@ class Node:
         context = dict(vars(self),
                        self_id=id(self),
                        left_id=id(self.left),
-                       right_id=id(self.right))
+                       right_id=id(self.right),
+                       feature_name=self.feature_name)
         if self.is_leaf:
             return 'Node {self_id}: class {label}'.format(**context)
         else:
             return (
-                'Node {self_id}: if feature {feature} <= {decision_boundary}, '
+                'Node {self_id}: if {feature_name} <= {decision_boundary}, '
                 'go to node {left_id}, else {right_id}.'.format(**context))
 
     def describe(self):
@@ -88,14 +104,14 @@ class Node:
             self.right.describe()
 
 
-def grow_tree(data, verbose=False):
+def grow_tree(data, feature_names=None, verbose=False):
     if verbose:
         print(data.shape)
     label_counts = Counter(data.y)
     labels = label_counts.keys()
     if len(labels) == 1:
         [c] = labels
-        node = Node(label=c, counts=label_counts)
+        node = Node(label=c, counts=label_counts, feature_names=feature_names)
     else:
         partition = choose_partition(data)
         left, right = data[partition.partition, :], data[~partition.partition, :]
@@ -103,12 +119,13 @@ def grow_tree(data, verbose=False):
         if n_right == 0:
             # All features are constant on this subset of sample points
             label = label_counts.most_common()[0][0]
-            node = Node(label=label, counts=label_counts)
+            node = Node(label=label, counts=label_counts, feature_names=feature_names)
         else:
-            node = Node(grow_tree(left, verbose=verbose),
-                        grow_tree(right, verbose=verbose),
+            node = Node(grow_tree(left, verbose=verbose, feature_names=feature_names),
+                        grow_tree(right, verbose=verbose, feature_names=feature_names),
                         partition.feature,
-                        partition.decision_boundary)
+                        partition.decision_boundary,
+                        feature_names=feature_names)
     if verbose:
         print(node, flush=True)
 
