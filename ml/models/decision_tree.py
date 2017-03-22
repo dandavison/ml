@@ -15,9 +15,10 @@ VERBOSE = False
 
 class DecisionTree(Classifier):
 
-    def __init__(self, feature_names=None, max_depth=np.inf):
+    def __init__(self, feature_names=None, label_names=None, max_depth=np.inf):
         self.tree = None
         self.feature_names = feature_names
+        self.label_names = label_names
         self.max_depth = max_depth
 
     def fit(self, X, y):
@@ -105,11 +106,20 @@ class Node:
     @property
     def feature_name(self):
         if self.feature is None:
-            return None
+            return ''
         elif self.tree.feature_names is not None:
             return self.tree.feature_names[self.feature]
         else:
             return 'feature %d' % self.feature
+
+    @property
+    def label_name(self):
+        if self.label is None:
+            return ''
+        elif self.tree.label_names is None:
+            return self.label
+        else:
+            return self.tree.label_names[int(self.label)]
 
     def predict(self, x):
         if self.is_leaf:
@@ -124,9 +134,10 @@ class Node:
                        self_id=id(self),
                        left_id=id(self.left),
                        right_id=id(self.right),
+                       label_name=self.label_name,
                        feature_name=self.feature_name)
         if self.is_leaf:
-            return 'Node {self_id}: class {label}'.format(**context)
+            return 'Node {self_id}: class {label_name}'.format(**context)
         else:
             return (
                 'Node {self_id}: if {feature_name} <= {decision_boundary}, '
@@ -145,7 +156,7 @@ class Node:
         graph.add_node(self)
         pgv_node = graph.get_node(self)
         if self.is_leaf:
-            label = self.label
+            label = self.label_name
         else:
             label = '{feature_name} <= {decision_boundary}?'.format(
                 feature_name=self.feature_name,
