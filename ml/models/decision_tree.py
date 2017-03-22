@@ -1,5 +1,4 @@
 from collections import Counter
-from functools import partial
 
 import numpy as np
 import pygraphviz as pgv
@@ -25,8 +24,7 @@ class DecisionTree(Classifier):
         data = np.hstack([X, y]).view(DecisionTreeData)
         if VERBOSE:
             print("Fitting decision tree: %d observations x %d features" % data.shape)
-        node_factory = partial(Node, feature_names=self.feature_names)
-        self.tree = grow_tree(data, node_factory, max_depth=self.max_depth)
+        self.tree = self._grow_tree(data, 0)
 
     def predict(self, X):
         return np.array([self.tree.predict(x) for x in X])
@@ -34,7 +32,36 @@ class DecisionTree(Classifier):
     def describe(self):
         self.tree.describe()
 
-    def write_png(self, filename):
+    def _grow_tree(self, data, depth):
+        label_counts = Counter(data.y)
+        labels = label_counts.keys()
+        predict = lambda: label_counts.most_common()[0][0]
+        if len(labels) == 1 or depth > self.max_depth:
+            node = self.node_factory(label=predict(), counts=label_counts)
+        else:
+            partition = choose_partition(data)
+            left, right = data[partition.partition, :], data[~partition.partition, :]
+            n_right, d = right.shape
+            if n_right == 0:
+                # All features are constant on this subset of sample points
+                node = node_factory(label=predict(), counts=label_counts)
+            else:
+                node = self.node_factory(self._grow_tree(left, depth + 1),
+                                         self._grow_tree(right, depth + 1,),
+                                         partition.feature,
+                                         partition.decision_boundary)
+        if VERBOSE:
+            print(node, flush=True)
+
+        return node
+
+    def node_factory(self, *args, **kwargs):
+        return Node(*args, **kwargs, tree=self)
+
+    def draw(self, filename):
+        """
+        Create an image of the tree using graphviz.
+        """
         graph = pgv.AGraph(directed=True)
         self.tree.add_to_graph(graph)
         graph.layout('dot')
@@ -61,7 +88,7 @@ class Node:
                  decision_boundary=None,
                  label=None,
                  counts=False,
-                 feature_names=None):
+                 tree=None):
 
         self.left = left
         self.right = right
@@ -69,7 +96,7 @@ class Node:
         self.decision_boundary = decision_boundary
         self.label = label
         self.counts = counts
-        self.feature_names = feature_names
+        self.tree = tree
 
     @property
     def is_leaf(self):
@@ -79,8 +106,8 @@ class Node:
     def feature_name(self):
         if self.feature is None:
             return None
-        elif self.feature_names is not None:
-            return self.feature_names[self.feature]
+        elif self.tree.feature_names is not None:
+            return self.tree.feature_names[self.feature]
         else:
             return 'feature %d' % self.feature
 
@@ -130,31 +157,6 @@ class Node:
         if self.right:
             self.right.add_to_graph(graph)
             graph.add_edge(self, self.right, label='Yes')
-
-
-def grow_tree(data, node_factory, depth=0, max_depth=float('inf')):
-    label_counts = Counter(data.y)
-    labels = label_counts.keys()
-    predict = lambda: label_counts.most_common()[0][0]
-    if len(labels) == 1 or depth > max_depth:
-        node = node_factory(label=predict(), counts=label_counts)
-    else:
-        partition = choose_partition(data)
-        left, right = data[partition.partition, :], data[~partition.partition, :]
-        n_right, d = right.shape
-        if n_right == 0:
-            # All features are constant on this subset of sample points
-            node = node_factory(label=predict(), counts=label_counts)
-        else:
-            node = node_factory(grow_tree(left, node_factory, depth + 1, max_depth=max_depth),
-                                grow_tree(right, node_factory, depth + 1, max_depth=max_depth),
-                                partition.feature,
-                                partition.decision_boundary)
-    if VERBOSE:
-        print(node, flush=True)
-
-    return node
-
 
 
 class Partition:
