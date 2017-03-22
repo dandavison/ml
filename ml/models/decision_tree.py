@@ -13,6 +13,7 @@ from ml.utils import starmin
 
 VERBOSE = False
 
+
 class DecisionTree(Classifier):
 
     def __init__(self, feature_names=None, label_names=None, max_depth=np.inf):
@@ -30,35 +31,6 @@ class DecisionTree(Classifier):
     def predict(self, X):
         return np.array([self.tree.predict(x) for x in X])
 
-    def describe(self):
-        self.tree.describe()
-
-    def _grow_tree(self, data, depth):
-        label_counts = Counter(data.y)
-        labels = label_counts.keys()
-        predict = lambda: label_counts.most_common()[0][0]
-        if len(labels) == 1 or depth > self.max_depth:
-            node = self.node_factory(label=predict(), counts=label_counts)
-        else:
-            partition = choose_partition(data)
-            left, right = data[partition.partition, :], data[~partition.partition, :]
-            n_right, d = right.shape
-            if n_right == 0:
-                # All features are constant on this subset of sample points
-                node = node_factory(label=predict(), counts=label_counts)
-            else:
-                node = self.node_factory(self._grow_tree(left, depth + 1),
-                                         self._grow_tree(right, depth + 1,),
-                                         partition.feature,
-                                         partition.decision_boundary)
-        if VERBOSE:
-            print(node, flush=True)
-
-        return node
-
-    def node_factory(self, *args, **kwargs):
-        return Node(*args, **kwargs, tree=self)
-
     def draw(self, filename):
         """
         Create an image of the tree using graphviz.
@@ -67,6 +39,35 @@ class DecisionTree(Classifier):
         self.tree.add_to_graph(graph)
         graph.layout('dot')
         graph.draw(filename)
+
+    def describe(self):
+        self.tree.describe()
+
+    def _grow_tree(self, data, depth):
+        label_counts = Counter(data.y)
+        labels = label_counts.keys()
+        predict = lambda: label_counts.most_common()[0][0]
+        if len(labels) == 1 or depth > self.max_depth:
+            node = self._node_factory(label=predict(), counts=label_counts)
+        else:
+            partition = choose_partition(data)
+            left, right = data[partition.partition, :], data[~partition.partition, :]
+            n_right, d = right.shape
+            if n_right == 0:
+                # All features are constant on this subset of sample points
+                node = self._node_factory(label=predict(), counts=label_counts)
+            else:
+                node = self._node_factory(self._grow_tree(left, depth + 1),
+                                         self._grow_tree(right, depth + 1,),
+                                         partition.feature,
+                                         partition.decision_boundary)
+        if VERBOSE:
+            print(node, flush=True)
+
+        return node
+
+    def _node_factory(self, *args, **kwargs):
+        return Node(*args, **kwargs, tree=self)
 
 
 class DecisionTreeData(np.ndarray):
