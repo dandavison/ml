@@ -15,16 +15,17 @@ VERBOSE = False
 
 class DecisionTree(Classifier):
 
-    def __init__(self, feature_names=None):
+    def __init__(self, feature_names=None, max_depth=np.inf):
         self.tree = None
         self.feature_names = feature_names
+        self.max_depth = max_depth
 
     def fit(self, X, y):
         data = np.hstack([X, y]).view(DecisionTreeData)
         if VERBOSE:
             print("Fitting decision tree: %d observations x %d features" % data.shape)
         node_factory = partial(Node, feature_names=self.feature_names)
-        self.tree = grow_tree(data, node_factory)
+        self.tree = grow_tree(data, node_factory, max_depth=self.max_depth)
 
     def predict(self, X):
         return np.array([self.tree.predict(x) for x in X])
@@ -103,24 +104,22 @@ class Node:
             self.left.describe()
             self.right.describe()
 
-
-def grow_tree(data, node_factory):
+def grow_tree(data, node_factory, depth=0, max_depth=float('inf')):
     label_counts = Counter(data.y)
     labels = label_counts.keys()
-    if len(labels) == 1:
-        [c] = labels
-        node = node_factory(label=c, counts=label_counts)
+    predict = lambda: label_counts.most_common()[0][0]
+    if len(labels) == 1 or depth > max_depth:
+        node = node_factory(label=predict(), counts=label_counts)
     else:
         partition = choose_partition(data)
         left, right = data[partition.partition, :], data[~partition.partition, :]
         n_right, d = right.shape
         if n_right == 0:
             # All features are constant on this subset of sample points
-            label = label_counts.most_common()[0][0]
-            node = node_factory(label=label, counts=label_counts)
+            node = node_factory(label=predict(), counts=label_counts)
         else:
-            node = node_factory(grow_tree(left, node_factory),
-                                grow_tree(right, node_factory),
+            node = node_factory(grow_tree(left, node_factory, depth + 1, max_depth=max_depth),
+                                grow_tree(right, node_factory, depth + 1, max_depth=max_depth),
                                 partition.feature,
                                 partition.decision_boundary)
     if VERBOSE:
