@@ -19,6 +19,7 @@ class DecisionTree(Classifier):
     def __init__(self, feature_names=None, label_names=None, max_depth=np.inf):
         self.tree = None
         self.feature_names = feature_names
+        assert label_names == sorted(label_names)
         self.label_names = label_names
         self.max_depth = max_depth
 
@@ -60,7 +61,8 @@ class DecisionTree(Classifier):
                 node = self._node_factory(self._grow_tree(left, depth + 1),
                                           self._grow_tree(right, depth + 1,),
                                           partition.feature,
-                                          partition.decision_boundary)
+                                          partition.decision_boundary,
+                                          counts=label_counts)
         if VERBOSE:
             print(node, flush=True)
 
@@ -154,6 +156,9 @@ class Node:
         """
         Add tree rooted at this node to pygraphviz graph.
         """
+        format_counts = lambda counts: (
+            '{%s}' % ', '.join('%d' % counts[label]
+                               for label in range(len(self.tree.label_names))))
         if self.is_leaf:
             label = self.label_name
         else:
@@ -163,10 +168,10 @@ class Node:
         graph.add_node(self, label=label)
         if self.left:
             self.left.add_to_graph(graph)
-            graph.add_edge(self, self.left, label='No')
+            graph.add_edge(self, self.left, label='No\n%s' % format_counts(self.left.counts))
         if self.right:
             self.right.add_to_graph(graph)
-            graph.add_edge(self, self.right, label='Yes')
+            graph.add_edge(self, self.right, label='Yes\n%s' % format_counts(self.right.counts))
 
 
 class Partition:
