@@ -3,6 +3,7 @@ from collections import Counter
 import numpy as np
 import pygraphviz as pgv
 from numpy import log2
+from numpy import random
 
 from ml.models import Classifier
 from ml.utils import entropy
@@ -12,6 +13,24 @@ from ml.utils import starmin
 
 
 VERBOSE = False
+
+
+class RandomForest(Classifier):
+
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+        self.trees = None
+
+    def fit(self, X, y, n_trees):
+        self.trees = []
+        n, d = X.shape
+        row_indices = range(n)
+        for i in range(n_trees):
+            bootstrap_sample = random.choice(row_indices, n, replace=True)
+            _X, _y = X[bootstrap_sample], y[bootstrap_sample]
+            tree = DecisionTree(**self.kwargs).fit(_X, _y)
+            self.trees.append(tree)
+        return self
 
 
 class DecisionTree(Classifier):
