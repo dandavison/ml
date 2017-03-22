@@ -2,6 +2,7 @@ from collections import Counter
 from functools import partial
 
 import numpy as np
+import pygraphviz as pgv
 from numpy import log2
 
 from ml.models import Classifier
@@ -32,6 +33,12 @@ class DecisionTree(Classifier):
 
     def describe(self):
         self.tree.describe()
+
+    def write_png(self, filename):
+        graph = pgv.AGraph(directed=True)
+        self.tree.add_to_graph(graph)
+        graph.layout('dot')
+        graph.draw(filename)
 
 
 class DecisionTreeData(np.ndarray):
@@ -103,6 +110,27 @@ class Node:
         if not self.is_leaf:
             self.left.describe()
             self.right.describe()
+
+    def add_to_graph(self, graph):
+        """
+        Add tree rooted at this node to pygraphviz graph.
+        """
+        graph.add_node(self)
+        pgv_node = graph.get_node(self)
+        if self.is_leaf:
+            label = self.label
+        else:
+            label = '{feature_name} <= {decision_boundary}?'.format(
+                feature_name=self.feature_name,
+                **vars(self))
+        pgv_node.attr.update(label=label)
+        if self.left:
+            self.left.add_to_graph(graph)
+            graph.add_edge(self, self.left, label='No')
+        if self.right:
+            self.right.add_to_graph(graph)
+            graph.add_edge(self, self.right, label='Yes')
+
 
 def grow_tree(data, node_factory, depth=0, max_depth=float('inf')):
     label_counts = Counter(data.y)
