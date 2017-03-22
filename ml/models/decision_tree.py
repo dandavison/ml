@@ -1,4 +1,5 @@
 from collections import Counter
+from functools import partial
 
 import numpy as np
 from numpy import log2
@@ -10,20 +11,20 @@ from ml.utils import mean
 from ml.utils import starmin
 
 
+VERBOSE = False
+
 class DecisionTree(Classifier):
 
-    def __init__(self, feature_names=None, verbose=False):
+    def __init__(self, feature_names=None):
         self.tree = None
-        self.verbose=verbose
         self.feature_names = feature_names
 
     def fit(self, X, y):
         data = np.hstack([X, y]).view(DecisionTreeData)
-        if self.verbose:
+        if VERBOSE:
             print("Fitting decision tree: %d observations x %d features" % data.shape)
-        self.tree = grow_tree(data,
-                              feature_names=self.feature_names,
-                              verbose=self.verbose)
+        node_factory = partial(Node, feature_names=self.feature_names)
+        self.tree = grow_tree(data, node_factory)
 
     def predict(self, X):
         return np.array([self.tree.predict(x) for x in X])
@@ -61,7 +62,6 @@ class Node:
         self.label = label
         self.counts = counts
         self.feature_names = feature_names
-
 
     @property
     def is_leaf(self):
@@ -104,14 +104,12 @@ class Node:
             self.right.describe()
 
 
-def grow_tree(data, feature_names=None, verbose=False):
-    if verbose:
-        print(data.shape)
+def grow_tree(data, node_factory):
     label_counts = Counter(data.y)
     labels = label_counts.keys()
     if len(labels) == 1:
         [c] = labels
-        node = Node(label=c, counts=label_counts, feature_names=feature_names)
+        node = node_factory(label=c, counts=label_counts)
     else:
         partition = choose_partition(data)
         left, right = data[partition.partition, :], data[~partition.partition, :]
@@ -119,14 +117,13 @@ def grow_tree(data, feature_names=None, verbose=False):
         if n_right == 0:
             # All features are constant on this subset of sample points
             label = label_counts.most_common()[0][0]
-            node = Node(label=label, counts=label_counts, feature_names=feature_names)
+            node = node_factory(label=label, counts=label_counts)
         else:
-            node = Node(grow_tree(left, verbose=verbose, feature_names=feature_names),
-                        grow_tree(right, verbose=verbose, feature_names=feature_names),
-                        partition.feature,
-                        partition.decision_boundary,
-                        feature_names=feature_names)
-    if verbose:
+            node = node_factory(grow_tree(left, node_factory),
+                                grow_tree(right, node_factory),
+                                partition.feature,
+                                partition.decision_boundary)
+    if VERBOSE:
         print(node, flush=True)
 
     return node
