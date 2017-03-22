@@ -58,9 +58,9 @@ class DecisionTree(Classifier):
                 node = self._node_factory(label=predict(), counts=label_counts)
             else:
                 node = self._node_factory(self._grow_tree(left, depth + 1),
-                                         self._grow_tree(right, depth + 1,),
-                                         partition.feature,
-                                         partition.decision_boundary)
+                                          self._grow_tree(right, depth + 1,),
+                                          partition.feature,
+                                          partition.decision_boundary)
         if VERBOSE:
             print(node, flush=True)
 
