@@ -11,6 +11,11 @@ class Model:
         return self.__class__.__name__
 
     def fit(self, X, y, **kwargs):
+        """
+        Fit model to inputs X and outcomes y.
+
+        Return the model instance.
+        """
         raise NotImplementedError
 
 

@@ -28,6 +28,7 @@ class DecisionTree(Classifier):
         if VERBOSE:
             print("Fitting decision tree: %d observations x %d features" % data.shape)
         self.tree = self._grow_tree(data, 0)
+        return self
 
     def predict(self, X):
         return np.array([self.tree.predict(x) for x in X])

@@ -34,6 +34,7 @@ class LogisticRegressionWithL2Regularization(Classifier):
             w = w - self.epsilon * self.gradient(X, y, w)
 
         self.w = w
+        return self
 
     def predict(self, X):
         prob = logistic(X @ self.w)
