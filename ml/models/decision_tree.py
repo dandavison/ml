@@ -154,15 +154,13 @@ class Node:
         """
         Add tree rooted at this node to pygraphviz graph.
         """
-        graph.add_node(self)
-        pgv_node = graph.get_node(self)
         if self.is_leaf:
             label = self.label_name
         else:
             label = '{feature_name} <= {decision_boundary}?'.format(
                 feature_name=self.feature_name,
                 **vars(self))
-        pgv_node.attr.update(label=label)
+        graph.add_node(self, label=label)
         if self.left:
             self.left.add_to_graph(graph)
             graph.add_edge(self, self.left, label='No')
