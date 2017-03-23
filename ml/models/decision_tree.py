@@ -182,7 +182,7 @@ class Node:
         if self.is_leaf:
             label = self.label_name
         else:
-            label = '{feature_name} <= {decision_boundary}?'.format(
+            label = '{feature_name} > {decision_boundary}?'.format(
                 feature_name=self.feature_name,
                 **vars(self))
         graph.add_node(self, label=label)
