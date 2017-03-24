@@ -1,3 +1,4 @@
+import json
 import numpy as np
 
 from ml.utils import mean
@@ -17,6 +18,9 @@ class Model:
         Return the model instance.
         """
         raise NotImplementedError
+
+    def serialize(self):
+        return json.dumps(self.model, sort_keys=True)
 
 
 class Classifier(Model):
