@@ -40,7 +40,9 @@ class DecisionTree(Classifier):
         self.tree = None
         self.feature_names = feature_names
         self.label_names = label_names
-        self.max_depth = max_depth
+        self.model = {
+            'max_depth': max_depth,
+        }
 
     def fit(self, X, y):
         data = np.hstack([X, y]).view(DecisionTreeData)
@@ -68,7 +70,7 @@ class DecisionTree(Classifier):
         label_counts = Counter(data.y)
         labels = label_counts.keys()
         predict = lambda: label_counts.most_common()[0][0]
-        if len(labels) == 1 or depth > self.max_depth:
+        if len(labels) == 1 or depth > self.model['max_depth']:
             node = self._node_factory(label=predict(), counts=label_counts)
         else:
             partition = choose_partition(data)
