@@ -28,14 +28,15 @@ class TestDecisionTree(TestCase):
                 [0],
                 [1],
             ])
-        tree = DecisionTree(label_names=[0, 1])
-        tree.fit(X_train, y_train)
-        left, right = tree.tree.left, tree.tree.right
-        self.assertTrue(tree.tree.feature == 0)
-        self.assertTrue(tree.tree.decision_boundary == 0)
+        decision_tree = DecisionTree(label_names=[0, 1])
+        decision_tree.fit(X_train, y_train)
+        tree, = decision_tree.trees
+        left, right = tree.left, tree.right
+        self.assertTrue(tree.feature == 0)
+        self.assertTrue(tree.decision_boundary == 0)
         self.assertTrue(left.is_leaf and right.is_leaf)
         self.assertEqual(
             Counter([left.label, right.label]),
             Counter([0, 1]),
         )
-        self.assertEqualArrays(tree.predict(X_test), y_test_expected)
+        self.assertEqualArrays(decision_tree.predict(X_test), y_test_expected)

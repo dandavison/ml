@@ -3,8 +3,6 @@ from itertools import starmap
 
 import numpy as np
 import pygraphviz as pgv
-from numpy import log2
-from numpy import random
 
 from ml.models import Classifier
 from ml.utils import entropy
@@ -16,21 +14,39 @@ from ml.utils import starmin
 VERBOSE = False
 
 
-class RandomForest(Classifier):
+class DecisionTree(Classifier):
 
-    def __init__(self, **kwargs):
-        self.kwargs = kwargs
-        self.trees = None
-        self.n_trees = n_trees
+    def __init__(self,
+                 feature_names=None,
+                 label_names=None,
+                 n_trees=1,
+                 randomize_features=False,
+                 randomize_observations=False,
+                 max_depth=np.inf):
+
+        assert (randomize_observations or randomize_features) != (n_trees == 1)
+
+        self.trees = []
+        self.feature_names = feature_names
+        self.label_names = label_names
+        self.model = {
+            'n_trees': n_trees,
+            'randomize_features': randomize_features,
+            'randomize_observations': randomize_observations,
+            'max_depth': max_depth,
+        }
 
     def fit(self, X, y):
-        self.trees = []
         n, d = X.shape
         row_indices = range(n)
-        for i in range(n_trees):
-            bootstrap_sample = random.choice(row_indices, n, replace=True)
-            _X, _y = X[bootstrap_sample], y[bootstrap_sample]
-            tree = DecisionTree(**self.kwargs).fit(_X, _y)
+        for i in range(self.model['n_trees']):
+            if self.model['randomize_observations']:
+                bootstrap_sample = np.random.choice(row_indices, n, replace=True)
+                _X, _y = X[bootstrap_sample], y[bootstrap_sample]
+            else:
+                _X, _y = X, y
+            data = np.hstack([X, y]).view(DecisionTreeData)
+            tree = self._grow_tree(data, 0)
             self.trees.append(tree)
         return self
 
@@ -43,39 +59,21 @@ class RandomForest(Classifier):
             y_pred.append(mode)
         return np.array(y_pred).reshape((n, 1))
 
-
-
-class DecisionTree(Classifier):
-
-    def __init__(self, feature_names=None, label_names=None, max_depth=np.inf):
-        self.tree = None
-        self.feature_names = feature_names
-        self.label_names = label_names
-        self.model = {
-            'max_depth': max_depth,
-        }
-
-    def fit(self, X, y):
-        data = np.hstack([X, y]).view(DecisionTreeData)
-        if VERBOSE:
-            print("Fitting decision tree: %d observations x %d features" % data.shape)
-        self.tree = self._grow_tree(data, 0)
-        return self
-
-    def predict(self, X):
-        return np.array([[self.tree.predict(x)] for x in X])
-
     def draw(self, filename):
         """
         Create an image of the tree using graphviz.
         """
         graph = pgv.AGraph(directed=True)
-        self.tree.add_to_graph(graph)
-        graph.layout('dot')
-        graph.draw(filename)
+        for i, tree in enumerate(self.trees):
+            tree.add_to_graph(graph)
+            graph.layout('dot')
+            graph.draw('%s%s' % (
+                filename,
+                ('-%d' % i) if len(self.trees) > 1 else ''))
 
     def describe(self):
-        self.tree.describe()
+        for tree in self.trees:
+            tree.describe()
 
     def _grow_tree(self, data, depth):
         label_counts = Counter(data.y)
@@ -84,7 +82,7 @@ class DecisionTree(Classifier):
         if len(labels) == 1 or depth > self.model['max_depth']:
             node = self._node_factory(label=predict(), counts=label_counts)
         else:
-            partition = choose_partition(data)
+            partition = choose_partition(data, self.model['randomize_features'])
             left, right = data[partition.partition, :], data[~partition.partition, :]
             n_right, d = right.shape
             if n_right == 0:
@@ -102,7 +100,7 @@ class DecisionTree(Classifier):
         return node
 
     def _node_factory(self, *args, **kwargs):
-        return Node(*args, **kwargs, tree=self)
+        return Node(*args, **kwargs, forest=self)
 
 
 class DecisionTreeData(np.ndarray):
@@ -125,7 +123,7 @@ class Node:
                  decision_boundary=None,
                  label=None,
                  counts=False,
-                 tree=None):
+                 forest=None):
 
         self.left = left
         self.right = right
@@ -133,7 +131,7 @@ class Node:
         self.decision_boundary = decision_boundary
         self.label = label
         self.counts = counts
-        self.tree = tree
+        self.forest = forest
 
     @property
     def is_leaf(self):
@@ -143,8 +141,8 @@ class Node:
     def feature_name(self):
         if self.feature is None:
             return ''
-        elif self.tree.feature_names is not None:
-            return self.tree.feature_names[self.feature]
+        elif self.forest.feature_names is not None:
+            return self.forest.feature_names[self.feature]
         else:
             return 'feature %d' % self.feature
 
@@ -152,10 +150,10 @@ class Node:
     def label_name(self):
         if self.label is None:
             return ''
-        elif self.tree.label_names is None:
+        elif self.forest.label_names is None:
             return self.label
         else:
-            return self.tree.label_names[int(self.label)]
+            return self.forest.label_names[int(self.label)]
 
     def predict(self, x):
         if self.is_leaf:
@@ -190,8 +188,8 @@ class Node:
         Add tree rooted at this node to pygraphviz graph.
         """
         def format_counts(counts):
-            if self.tree.label_names:
-                counts = {self.tree.label_names[int(k)]: n for k, n in counts.items()}
+            if self.forest.label_names:
+                counts = {self.forest.label_names[int(k)]: n for k, n in counts.items()}
             return (
                 '{%s}' % ', '.join(starmap('{}:{}'.format, sorted(counts.items()))))
         if self.is_leaf:
@@ -217,7 +215,34 @@ class Partition:
         self.feature = feature
 
 
-def choose_partition(data):
+def choose_partition(data, randomize_features):
+    if not randomize_features:
+        return _choose_partition(data)
+    else:
+        # Partition the features into non-overlapping subsets each of size
+        # n_features, with random uniform allocation. Start with the first such
+        # subset. Find the best partition of the observations when restricted
+        # to this subset of features. If this is not a trvial partition
+        # (i.e. trivial means all features in the subset were constant on this
+        # subset of the observations) then short circuit and return this
+        # partition. Otherwise, continue to the next subset of features.
+        n, d = data.X.shape
+        features = np.arange(d)
+        feature_permutation = np.random.choice(features, replace=False, size=d)
+        n_features = int(np.sqrt(d))
+        offset = 0
+        while True:
+            feature_subset = features[feature_permutation[offset:(offset + n_features)]]
+            if not len(feature_subset):
+                return partition
+            else:
+                partition = _choose_partition(data[:, feature_subset])
+                if not partition.partition.all():
+                    return partition
+                else:
+                    offset += n_features
+
+def _choose_partition(data):
     n, d = data.X.shape
     j, partition = starmin(
         ((j, partition)
