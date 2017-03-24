@@ -1,4 +1,5 @@
 from collections import Counter
+from itertools import starmap
 
 import numpy as np
 import pygraphviz as pgv
@@ -38,7 +39,6 @@ class DecisionTree(Classifier):
     def __init__(self, feature_names=None, label_names=None, max_depth=np.inf):
         self.tree = None
         self.feature_names = feature_names
-        assert label_names == sorted(label_names)
         self.label_names = label_names
         self.max_depth = max_depth
 
@@ -176,9 +176,11 @@ class Node:
         """
         Add tree rooted at this node to pygraphviz graph.
         """
-        format_counts = lambda counts: (
-            '{%s}' % ', '.join('%d' % counts[label]
-                               for label in range(len(self.tree.label_names))))
+        def format_counts(counts):
+            if self.tree.label_names:
+                counts = {self.tree.label_names[int(k)]: n for k, n in counts.items()}
+            return (
+                '{%s}' % ', '.join(starmap('{}:{}'.format, sorted(counts.items()))))
         if self.is_leaf:
             label = self.label_name
         else:
