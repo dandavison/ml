@@ -50,7 +50,7 @@ class DecisionTree(Classifier):
         return self
 
     def predict(self, X):
-        return np.array([self.tree.predict(x) for x in X])
+        return np.array([[self.tree.predict(x)] for x in X])
 
     def draw(self, filename):
         """
