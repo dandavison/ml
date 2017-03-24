@@ -21,8 +21,9 @@ class RandomForest(Classifier):
     def __init__(self, **kwargs):
         self.kwargs = kwargs
         self.trees = None
+        self.n_trees = n_trees
 
-    def fit(self, X, y, n_trees):
+    def fit(self, X, y):
         self.trees = []
         n, d = X.shape
         row_indices = range(n)
@@ -32,6 +33,16 @@ class RandomForest(Classifier):
             tree = DecisionTree(**self.kwargs).fit(_X, _y)
             self.trees.append(tree)
         return self
+
+    def predict(self, X):
+        n, d = X.shape
+        y_pred = []
+        for x in X:
+            mode = (Counter(tree.predict(x) for tree in self.trees)
+                    .most_common()[0][0])
+            y_pred.append(mode)
+        return np.array(y_pred).reshape((n, 1))
+
 
 
 class DecisionTree(Classifier):
