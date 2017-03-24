@@ -29,12 +29,9 @@ class Classifier(Model):
         raise NotImplementedError
 
     def get_error_rate(self,
-                       training_data,
-                       training_labels,
                        validation_data,
                        validation_labels):
 
-        self.fit(training_data, training_labels)
         predictions = self.predict(validation_data)
         return mean(r != y for r, y in zip(predictions.ravel(),
                                            validation_labels.ravel()))
