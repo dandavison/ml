@@ -227,6 +227,7 @@ def choose_partition(data, randomize_features):
         # subset of the observations) then short circuit and return this
         # partition. Otherwise, continue to the next subset of features.
         n, d = data.X.shape
+        y_column = d
         features = np.arange(d)
         feature_permutation = np.random.choice(features, replace=False, size=d)
         n_features = int(np.sqrt(d))
@@ -236,7 +237,8 @@ def choose_partition(data, randomize_features):
             if not len(feature_subset):
                 return partition
             else:
-                partition = _choose_partition(data[:, feature_subset])
+                columns = np.concatenate([feature_subset, [y_column]])
+                partition = _choose_partition(data[:, columns])
                 if not partition.partition.all():
                     return partition
                 else:
