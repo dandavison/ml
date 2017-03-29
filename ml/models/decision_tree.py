@@ -101,7 +101,7 @@ class DecisionTree(Classifier):
         return node
 
     def _node_factory(self, *args, **kwargs):
-        return Node(*args, **kwargs, forest=self)
+        return Node(*args, **kwargs, classifier=self)
 
 
 class DecisionTreeData(np.ndarray):
@@ -124,7 +124,7 @@ class Node:
                  decision_boundary=None,
                  label=None,
                  counts=False,
-                 forest=None):
+                 classifier=None):
 
         self.left = left
         self.right = right
@@ -132,7 +132,7 @@ class Node:
         self.decision_boundary = decision_boundary
         self.label = label
         self.counts = counts
-        self.forest = forest
+        self.classifier = classifier
 
     @property
     def is_leaf(self):
@@ -142,8 +142,8 @@ class Node:
     def feature_name(self):
         if self.feature is None:
             return ''
-        elif self.forest.feature_names is not None:
-            return self.forest.feature_names[self.feature]
+        elif self.classifier.feature_names is not None:
+            return self.classifier.feature_names[self.feature]
         else:
             return 'feature %d' % self.feature
 
@@ -151,10 +151,10 @@ class Node:
     def label_name(self):
         if self.label is None:
             return ''
-        elif self.forest.label_names is None:
+        elif self.classifier.label_names is None:
             return self.label
         else:
-            return self.forest.label_names[int(self.label)]
+            return self.classifier.label_names[int(self.label)]
 
     def predict(self, x):
         if self.classifier.decisions is not None:
@@ -209,8 +209,8 @@ class Node:
         Add tree rooted at this node to pygraphviz graph.
         """
         def format_counts(counts):
-            if self.forest.label_names:
-                counts = {self.forest.label_names[int(k)]: n for k, n in counts.items()}
+            if self.classifier.label_names:
+                counts = {self.classifier.label_names[int(k)]: n for k, n in counts.items()}
             return (
                 '{%s}' % ', '.join(starmap('{}:{}'.format, sorted(counts.items()))))
         if self.is_leaf:
