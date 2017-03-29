@@ -29,6 +29,7 @@ class DecisionTree(Classifier):
         self.trees = []
         self.feature_names = feature_names
         self.label_names = label_names
+        self.decisions = None  # set to list to record decisions during prediction
         self.model = {
             'n_trees': n_trees,
             'randomize_features': randomize_features,
@@ -156,12 +157,23 @@ class Node:
             return self.forest.label_names[int(self.label)]
 
     def predict(self, x):
+        if self.classifier.decisions is not None:
+            self.classifier.decisions.append(self.get_decision(x))
+
         if self.is_leaf:
             return self.label
         elif x[self.feature] <= self.decision_boundary:
             return self.left.predict(x)
         else:
             return self.right.predict(x)
+
+    def get_decision(self, x):
+        if self.is_leaf:
+            return 'Classified as {label}'.format(**self.attrs)
+        elif x[self.feature] <= self.decision_boundary:
+            return '{feature_name} <= {decision_boundary:.2f}'.format(**self.attrs)
+        else:
+            return '{feature_name} > {decision_boundary:.2f}'.format(**self.attrs)
 
     def __repr__(self):
         context = dict(vars(self),
@@ -176,6 +188,15 @@ class Node:
             return (
                 'Node {self_id}: if {feature_name} <= {decision_boundary}, '
                 'go to node {left_id}, else {right_id}.'.format(**context))
+
+    @property
+    def attrs(self):
+        attrs = vars(self).copy()
+        attrs.update({
+            'label_name': self.label_name,
+            'feature_name': self.feature_name,
+        })
+        return attrs
 
     def describe(self):
         print(self)
