@@ -21,6 +21,7 @@ def get_error_rates(X, y, models, n_training, n_validation, n_replicates=1):
 
     rows = []
     for model, n_train in product(models, n_training):
+        print(model.serialize(), n_train, n_replicates)
         error_rates = []
         training_error_rates = []
         for rep in range(n_replicates):
@@ -40,8 +41,6 @@ def get_error_rates(X, y, models, n_training, n_validation, n_replicates=1):
             'error_rate': error_rate,
             'training_error_rate': training_error_rate,
         })
-        print(model.serialize(), n_train, error_rate)
+        print(training_error_rate, error_rate, "\n")
 
     return pd.DataFrame(rows, columns=['model', 'n_train', 'error_rate', 'training_error_rate'])
-
-
