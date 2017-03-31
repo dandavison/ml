@@ -28,15 +28,15 @@ class Classifier(Model):
     def predict(self, X):
         raise NotImplementedError
 
-    def get_error_rate(self,
+    def get_accuracy(self,
                        validation_data,
                        validation_labels):
 
         predictions = self.predict(validation_data)
-        return mean(r != y for r, y in zip(predictions.ravel(),
+        return mean(r == y for r, y in zip(predictions.ravel(),
                                            validation_labels.ravel()))
 
-    def get_error_rates(self,
+    def get_accuracies(self,
                         training_data_subset_sizes,
                         training_data,
                         training_labels,
@@ -47,16 +47,16 @@ class Classifier(Model):
 
         Dimensions of array are (#{training_data_subsets}, 2)
         """
-        error_rates = []
+        accuracies = []
         for n_t in training_data_subset_sizes:
             training_data_subset, training_labels_subset, _, _ = (
                 random_partition(training_data, training_labels, n_t))
-            error_rates.append(
-                self.get_error_rate(
+            accuracies.append(
+                self.get_accuracy(
                     training_data_subset,
                     training_labels_subset,
                     validation_data,
                     validation_labels,
                 )
             )
-        return np.array(list(zip(training_data_subset_sizes, error_rates)))
+        return np.array(list(zip(training_data_subset_sizes, accuracies)))

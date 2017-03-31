@@ -7,7 +7,7 @@ from ml.utils import mean
 from ml.utils import random_partition
 
 
-def get_error_rates(X, y, models, n_training, n_validation, n_replicates=1,
+def get_accuracies(X, y, models, n_training, n_validation, n_replicates=1,
                     fixed_partition=False):
     """
     Return error rates computed on Cartesian product of models and training sizes.
@@ -27,8 +27,8 @@ def get_error_rates(X, y, models, n_training, n_validation, n_replicates=1,
     rows = []
     for model, n_train in product(models, n_training):
         print(model.serialize(), n_train, n_replicates)
-        error_rates = []
-        training_error_rates = []
+        training_accuracies = []
+        validation_accuracies = []
         for rep in range(n_replicates):
 
             if fixed_partition:
@@ -36,20 +36,20 @@ def get_error_rates(X, y, models, n_training, n_validation, n_replicates=1,
 
             _X_train, _y_train, _, _ = random_partition(X_train, y_train, n_train)
             model.fit(_X_train, _y_train)
-            training_error_rates.append(
-                model.get_error_rate(X_train, y_train)
+            training_accuracies.append(
+                model.get_accuracy(X_train, y_train)
             )
-            error_rates.append(
-                model.get_error_rate(X_validation, y_validation)
+            validation_accuracies.append(
+                model.get_accuracy(X_validation, y_validation)
             )
-        error_rate = mean(error_rates)
-        training_error_rate = mean(training_error_rates)
+        training_accuracy = mean(training_accuracies)
+        validation_accuracy = mean(validation_accuracies)
         rows.append({
             'model': model.serialize(),
             'n_train': n_train,
-            'error_rate': error_rate,
-            'training_error_rate': training_error_rate,
+            'training_accuracy': training_accuracy,
+            'validation_accuracy': validation_accuracy,
         })
-        print(training_error_rate, error_rate, "\n")
+        print(training_accuracy, validation_accuracy, "\n")
 
-    return pd.DataFrame(rows, columns=['model', 'n_train', 'error_rate', 'training_error_rate'])
+    return pd.DataFrame(rows, columns=['model', 'n_train', 'training_accuracy', 'validation_accuracy'])
