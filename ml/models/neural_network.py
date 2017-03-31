@@ -4,13 +4,16 @@ import numpy as np
 class NeuralNetwork(Classifier):
     def fit(self, n_iter=10):
         for it in range(n_iter):
-            self.params -= self.learning_rate * self.gradient()
+            self.forwards()
+            self.backwards()
+            for layer in self.layers:
+                self.layer.W -= self.learning_rate * self.layer.gradient()
 
     def predict(X):
-        yhat = X
-        for l in self.layers:
-            yhat = l.f(yhat @ l.W)
-        return self.prediction_fn(yhat)
+        Z = X
+        for layer in self.layers:
+            Z = layer.f(Z @ layer.W)
+        return self.prediction_fn(Z)
 
     def prediction_fn(self, yhat):
         """
@@ -28,14 +31,11 @@ class Layer:
 
     - f  activation function.
 
-    The data values \hat{Y} in the previous layer have dimension (n x j).
-    The data values \hat{Y'} in this layer have dimension (n x k).
-    The data values \hat{Y'} in this layer are computed as
+    The data values Z in the previous layer have dimension (n x j).
+    The data values Z' in this layer have dimension (n x k).
+    Z' is computed as
 
-    \hat{Y'} = f(\hat{Y} W).
-
-    The data values are named \hat{Y} because they are a matrix at some point in
-    the transformation of the input data X to the predictions \hat{Y}.
+    Z' = f(ZW).
     """
     def __init__(self, activation_fn, weights_matrix):
         self.f = activation_fn
