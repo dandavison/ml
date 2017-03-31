@@ -1,3 +1,4 @@
+import random
 from itertools import product
 
 import pandas as pd
@@ -6,7 +7,8 @@ from ml.utils import mean
 from ml.utils import random_partition
 
 
-def get_error_rates(X, y, models, n_training, n_validation, n_replicates=1):
+def get_error_rates(X, y, models, n_training, n_validation, n_replicates=1,
+                    fixed_partition=False):
     """
     Return error rates computed on Cartesian product of models and training sizes.
     """
@@ -19,12 +21,19 @@ def get_error_rates(X, y, models, n_training, n_validation, n_replicates=1):
 
     X_validation, y_validation, X_train, y_train = random_partition(X, y, n_validation)
 
+    if fixed_partition:
+        rng_state = random.getstate()
+
     rows = []
     for model, n_train in product(models, n_training):
         print(model.serialize(), n_train, n_replicates)
         error_rates = []
         training_error_rates = []
         for rep in range(n_replicates):
+
+            if fixed_partition:
+                random.setstate(rng_state)
+
             _X_train, _y_train, _, _ = random_partition(X_train, y_train, n_train)
             model.fit(_X_train, _y_train)
             training_error_rates.append(
