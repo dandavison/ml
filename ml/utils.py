@@ -71,6 +71,21 @@ def l2_norm(x):
     return np.sqrt((x ** 2).sum())
 
 
+def logistic(z, check=True):
+    p = 1 / (1 + np.exp(-z))
+    if check:
+        assert np.isfinite(p).all()
+        assert (0 <= p).all() and (p <= 1).all()
+    return p
+
+
+def log(x, check=True):
+    log_x = np.log(x)
+    if check:
+        assert np.isfinite(log_x).all()
+    return log_x
+
+
 def split(X, labels):
     """
     A generator yielding subsets of data defined by the labels.

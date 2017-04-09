@@ -1,8 +1,15 @@
 import sys
+from functools import partial
 
 import numpy as np
 
 from ml.models.base import Classifier
+from ml.utils import log
+from ml.utils import logistic
+
+
+log = partial(log, check=True)
+logistic = partial(logistic, check=True)
 
 
 __all__ = ['LogisticRegressionWithL2Regularization']
@@ -63,16 +70,3 @@ def logistic_regression_newton_update(w, X, y, _lambda):
     B = np.diag((s * (1 - s) + 2 * _lambda).ravel())
     hessian = X.T @ B @ X
     return w - np.inv(hessian) @ gradient
-
-
-def logistic(z):
-    p = 1 / (1 + np.exp(-z))
-    assert np.isfinite(p).all()
-    assert (0 < p).all() and (p < 1).all()
-    return p
-
-
-def log(x):
-    log_x = np.log(x)
-    assert np.isfinite(log_x).all()
-    return log_x
