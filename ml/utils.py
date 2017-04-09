@@ -6,6 +6,11 @@ import pandas as pd
 from numpy import log2
 
 
+from functools import partial
+from scipy.stats import describe
+describe = partial(describe, axis=None)
+
+
 def contrast_normalize(X):
     """
     Return input data normalized by dividing by the l2-norm of each row.
@@ -86,6 +91,17 @@ def log(x, check=True):
     return log_x
 
 
+def multiply_with_zeros_and_nonfinite_values(a, b):
+    prod = a * b
+    prod[a == 0] = 0
+    prod[b == 0] = 0
+
+    if not np.isfinite(prod).all():
+        import ipdb ; ipdb.set_trace()
+
+    return prod
+
+
 def split(X, labels):
     """
     A generator yielding subsets of data defined by the labels.
@@ -162,6 +178,16 @@ def entropy(counts):
             return 0.0
         else:
             return log2(n_total) - sum(n * log2(n) for n in counts) / n_total
+
+
+def one_hot_encode_array(x):
+    # 1D vector of positive integers
+    assert (len(x.shape) == 1 and
+            (x > 0).all() and
+            np.issubdtype(x.dtype, np.int))
+    encoded = np.zeros((x.size, x.max()), dtype=np.int)
+    encoded[np.arange(x.size), x - 1] = 1
+    return encoded
 
 
 def one_hot_encode_categorical_columns(df, max_n_categories):

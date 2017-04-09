@@ -1,24 +1,39 @@
+from collections import Counter
+from functools import partial
+from random import sample
+
 import numpy as np
+from numpy import tanh
+from scipy.stats import describe
 
 from ml.models.base import Classifier
+from ml.utils import log
+from ml.utils import logistic
+from ml.utils import multiply_with_zeros_and_nonfinite_values
+from ml.utils import one_hot_encode_array
+
+describe = partial(describe, axis=None)
+log = partial(log, check=False)
+logistic = partial(logistic, check=True)
 
 
 __all__ = ['SingleLayerTanhLogisticNeuralNetwork']
 
 
 class NeuralNetwork(Classifier):
-    def fit(self, n_iter=10):
-        for it in range(n_iter):
-            self.forwards()
-            self.backwards()
-            for layer in self.layers:
-                self.layer.W -= self.learning_rate * self.layer.gradient()
 
     def predict(X):
         Z = X
         for layer in self.layers:
             Z = layer.f(Z @ layer.W)
         return self.prediction_fn(Z)
+
+    def fit(self, X, Y, n_iter=10):
+        for it in range(n_iter):
+            self.forwards()
+            self.backwards()
+            for layer in self.layers:
+                self.layer.W -= self.learning_rate * self.layer.gradient()
 
     def prediction_fn(self, yhat):
         """
@@ -27,11 +42,128 @@ class NeuralNetwork(Classifier):
         raise NotImplementedError
 
 
+class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
+    """
+    A classification neural net with one hidden layer.
+
+    The hidden layer uses the tanh activation function.
+    The output layer uses the logistic activation function.
+
+    Model:
+
+    The input data are X (n x d) and Y (n x K). We use stochastic gradient
+    descent, i.e. compute and update gradients for a single input row at a
+    time, so in backpropagation we work with x (d x 1) and y (K x 1).
+
+    | Input                | x            | d x 1  |
+    | First weight matrix  | V            | H x d  |
+    | Hidden layer         | Z = tanh(Vx) | H x 1  |
+    | Second weight matrix | W            | K x H  |
+    | Output               | yhat         | K x 1  |
+    | Loss                 | L            | scalar |
+
+    The loss function is the cross-entropy
+    sum_k { y_k log(yhat_k) + (1 - y_k) log(1 - yhat_k) }
+    """
+
+    def __init__(self, n_hidden_units):
+        self.H = n_hidden_units
+        self.K = None  # Determined empirically as distinct training labels
+        self.V = None
+        self.W = None
+
+    def predict(self, X):
+        Z = tanh(self.V @ X.T)
+        Yhat = logistic(self.W @ Z).T
+        return Yhat
+
+    def fit(self, X, y, n_iterations, eps=1e-3):
+        """
+        \grad_{W_k} L = \partiald{L}{\yhat_k} \grad_{W_k} \yhat_k
+            \partiald{L}{\yhat_k} = \frac{y_k - \yhat_k}{\yhat_k (1 - \yhat_k)}
+            \grad_{W_k} \yhat_k = z \yhat_k (1 - \yhat_k)
+
+        \grad_z L = \sum_k \partiald{L}{\yhat_k} \grad_z \yhat_k
+            \grad_z \yhat_k = W_k \yhat_k (1 - \yhat_k)
+
+        \grad_{V_h} L = \partiald{L}{z_h} \grad_{V_h} z_h
+            \grad_{V_h} z_h = x(1 - z_h^2)
+        """
+        X, Y = self.prepare_data(X, y)
+        H = self.H
+        K = self.K
+
+        n, d = X.shape
+
+        V = self.V = np.random.uniform(-1, 1, size=H * d).reshape((H, d))
+        W = self.W = np.random.uniform(-1, 1, size=K * H).reshape((K, H))
+
+        Yhat = self.predict(X)
+
+        L = self.loss(Yhat, Y)
+        print('Loss: %.2f' % L)
+
+        for it in range(n_iterations):
+
+            i, = sample(range(n), 1)
+
+            x = X[i, :]
+            z = tanh(V @ x)
+            yhat = Yhat[i, :]
+            y = Y[i, :]
+            L_i_before = self.loss(yhat, y)
+
+            grad__L__yhat = (y - yhat) / (yhat * (1 - yhat))
+
+            # Update W
+            grad__L__z = np.zeros_like(z)
+            for k in range(K):
+                grad__yhat_k__W_k = z * yhat[k] * (1 - yhat[k])
+                grad__yhat_k__z = W[k, :] * yhat[k] * (1 - yhat[k])
+                grad__L__z += grad__L__yhat[k] * grad__yhat_k__z
+                W[k, :] -= eps * grad__L__yhat[k] * grad__yhat_k__W_k
+
+            # Update V
+            for h in range(H):
+                grad__z_h__v_h = x * (1 - z[h] ** 2)
+                grad__L__v_h = grad__L__z[h] * grad__z_h__v_h
+                V[h, :] -= eps * grad__L__v_h
+
+            z = tanh(V @ x)
+            yhat = logistic(W @ z)
+            Yhat[i, :] = yhat
+            L_i_after = self.loss(yhat, y)
+            assert L_i_after < L_i_before
+            L += (L_i_after - L_i_before)
+            print('Loss: %.2f' % L)
+            assert abs(L - self.loss(Yhat, Y)) < 1e-6
+
+    def loss(self, Yhat, Y):
+        return (
+            multiply_with_zeros_and_nonfinite_values(Y,     log(    Yhat)) +
+            multiply_with_zeros_and_nonfinite_values(1 - Y, log(1 - Yhat))
+        ).sum()
+
+    def prepare_data(self, X, y):
+        n, d = X.shape
+        nY, = y.shape
+        assert nY == n
+        self.K = len(set(y))
+        # Demand that labels are integers 1...max(y)
+        if not np.issubdtype(y.dtype, np.int):
+            y_int = np.floor(y).astype(np.int)
+            assert (y_int == y).all()
+            y = y_int
+        assert set(y) == set(np.arange(self.K) + 1)
+        Y = one_hot_encode_array(y)
+        return X, Y
+
+
 class Layer:
     """
     Each layer has two attributes:
 
-    - W  a (j x k) weight matrix, where j is the number of units in the previous
+    - W a (j x k) weight matrix, where j is the number of units in the previous
          layer and k is the number of units in this layer.
 
     - f  activation function.
@@ -41,6 +173,7 @@ class Layer:
     Z' is computed as
 
     Z' = f(ZW).
+
     """
     def __init__(self, activation_fn, weights_matrix):
         self.f = activation_fn
