@@ -4,6 +4,7 @@ from itertools import starmap
 import numpy as np
 import pygraphviz as pgv
 
+from ml.data import LabeledData
 from ml.models import Classifier
 from ml.utils import entropy
 from ml.utils import inverse_permutation
@@ -46,7 +47,7 @@ class DecisionTree(Classifier):
                 _X, _y = X[bootstrap_sample], y[bootstrap_sample]
             else:
                 _X, _y = X, y
-            data = np.hstack([X, y]).view(DecisionTreeData)
+            data = np.hstack([X, y]).view(LabeledData)
             tree = self._grow_tree(data, 0)
             self.trees.append(tree)
         return self
@@ -102,17 +103,6 @@ class DecisionTree(Classifier):
 
     def _node_factory(self, *args, **kwargs):
         return Node(*args, **kwargs, classifier=self)
-
-
-class DecisionTreeData(np.ndarray):
-
-    @property
-    def X(self):
-        return self[:,:-1]
-
-    @property
-    def y(self):
-        return self[:,-1]
 
 
 class Node:
@@ -290,7 +280,7 @@ def get_feature_partitions(data):
     >>> from numpy import log2
     >>> approximately_equal = lambda x, y: abs(x - y) < 1e-15
     >>> data = np.array([[1.2, 0.7, 0.7, 2.2, 5.1, 6.2], [0, 0, 0, 1, 0, 1]]).T
-    >>> data = data.view(DecisionTreeData)
+    >>> data = data.view(LabeledData)
     >>> partitions = get_feature_partitions(data)
     >>> partition = next(partitions)
     >>> partition.decision_boundary == 0.7
