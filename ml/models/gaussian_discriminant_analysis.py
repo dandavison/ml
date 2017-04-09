@@ -4,9 +4,12 @@ import numpy as np
 from numpy.linalg import det
 from numpy.linalg import pinv as inv
 
-from ml.models import Classifier
-from ml.models.gaussian import Gaussian
+from ml.models import Gaussian
+from ml.models.base import Classifier
 from ml.utils import split
+
+
+__all__ = ['LinearDiscriminantAnalysis', 'QuadraticDiscriminantAnalysis']
 
 
 class GaussianDiscriminantAnalysis(Classifier):

@@ -1,5 +1,10 @@
 import numpy as np
 
+from ml.models.base import Classifier
+
+
+__all__ = ['SingleLayerTanhLogisticNeuralNetwork']
+
 
 class NeuralNetwork(Classifier):
     def fit(self, n_iter=10):

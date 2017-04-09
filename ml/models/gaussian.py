@@ -1,3 +1,6 @@
+__all__ = ['Gaussian']
+
+
 class Gaussian:
 
     def fit(self, X):

@@ -5,12 +5,14 @@ import numpy as np
 import pygraphviz as pgv
 
 from ml.data import LabeledData
-from ml.models import Classifier
+from ml.models.base import Classifier
 from ml.utils import entropy
 from ml.utils import inverse_permutation
 from ml.utils import mean
 from ml.utils import starmin
 
+
+__all__ = ['DecisionTree']
 
 VERBOSE = False
 

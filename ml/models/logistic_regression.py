@@ -2,7 +2,10 @@ import sys
 
 import numpy as np
 
-from ml.models import Classifier
+from ml.models.base import Classifier
+
+
+__all__ = ['LogisticRegressionWithL2Regularization']
 
 
 class LogisticRegressionWithL2Regularization(Classifier):
