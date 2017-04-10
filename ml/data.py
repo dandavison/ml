@@ -27,3 +27,10 @@ class LabeledData(np.ndarray):
         shuffle(row_indices)
         return (self[row_indices[:n_partition]].view(LabeledData),
                 self[row_indices[n_partition:]].view(LabeledData))
+
+
+class IntLabeledData(LabeledData):
+    @property
+    def y(self):
+        return self[:, -1].astype(np.int)
+
