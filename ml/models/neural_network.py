@@ -1,3 +1,4 @@
+import sys
 from collections import Counter
 from functools import partial
 from random import sample
@@ -9,7 +10,6 @@ from scipy.stats import describe
 from ml.models.base import Classifier
 from ml.utils import log
 from ml.utils import logistic
-from ml.utils import multiply_with_zeros_and_nonfinite_values
 from ml.utils import one_hot_encode_array
 
 describe = partial(describe, axis=None)
@@ -139,10 +139,14 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
             assert abs(L - self.loss(Yhat, Y)) < 1e-6
 
     def loss(self, Yhat, Y):
-        return (
-            multiply_with_zeros_and_nonfinite_values(Y,     log(    Yhat)) +
-            multiply_with_zeros_and_nonfinite_values(1 - Y, log(1 - Yhat))
-        ).sum()
+        log_Yhat = log(Yhat)
+        log_Yhat_inv = log(1 - Yhat)
+
+        epsilon = sys.float_info.epsilon
+        log_Yhat[~np.isfinite(log_Yhat)] = log(epsilon)
+        log_Yhat_inv[~np.isfinite(log_Yhat_inv)] = log(epsilon)
+
+        return (Y * log_Yhat + (1 - Y) * log_Yhat_inv).sum()
 
     def prepare_data(self, X, y):
         n, d = X.shape
