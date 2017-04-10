@@ -29,19 +29,19 @@ class Classifier(Model):
         raise NotImplementedError
 
     def get_accuracy(self,
-                       validation_data,
-                       validation_labels):
+                     validation_data,
+                     validation_labels):
 
         predictions = self.predict(validation_data)
         return mean(r == y for r, y in zip(predictions.ravel(),
                                            validation_labels.ravel()))
 
     def get_accuracies(self,
-                        training_data_subset_sizes,
-                        training_data,
-                        training_labels,
-                        validation_data,
-                        validation_labels):
+                       training_data_subset_sizes,
+                       training_data,
+                       training_labels,
+                       validation_data,
+                       validation_labels):
         """
         Return estimated error rate for each training data subset size.
 
