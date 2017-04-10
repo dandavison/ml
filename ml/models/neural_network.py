@@ -80,7 +80,12 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
         Yhat = logistic(self.W @ Z).T
         return Yhat
 
-    def fit(self, X, y, n_iterations, eps=1e-3, outfile=None):
+    def fit(self, X, y,
+            learning_rate=1e-3,
+            n_iterations=None,
+            stop_factor=None,
+            stop_window_size=100,
+            outfile=None):
         """
         \grad_{W_k} L = \partiald{L}{\yhat_k} \grad_{W_k} \yhat_k
             \partiald{L}{\yhat_k} = \frac{y_k - \yhat_k}{\yhat_k (1 - \yhat_k)}
@@ -92,6 +97,8 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
         \grad_{V_h} L = \partiald{L}{z_h} \grad_{V_h} z_h
             \grad_{V_h} z_h = x(1 - z_h^2)
         """
+        assert stop_factor or n_iterations
+
         X, Y = self.prepare_data(X, y)
         H = self.H
         K = self.K
@@ -106,7 +113,9 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
         L = self.loss(Yhat, Y)
         print('Loss: %.2f' % L)
 
-        for it in range(int(n_iterations)):
+        delta_L_window = np.zeros(stop_window_size)
+        it = 0
+        while True:
 
             if it % 1000 == 0:
                 sys.stderr.write('%d\n' % it)
@@ -127,13 +136,13 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
                 grad__yhat_k__W_k = z * yhat[k] * (1 - yhat[k])
                 grad__yhat_k__z = W[k, :] * yhat[k] * (1 - yhat[k])
                 grad__L__z += grad__L__yhat[k] * grad__yhat_k__z
-                W[k, :] -= eps * grad__L__yhat[k] * grad__yhat_k__W_k
+                W[k, :] -= learning_rate * grad__L__yhat[k] * grad__yhat_k__W_k
 
             # Update V
             for h in range(H):
                 grad__z_h__v_h = x * (1 - z[h] ** 2)
                 grad__L__v_h = grad__L__z[h] * grad__z_h__v_h
-                V[h, :] -= eps * grad__L__v_h
+                V[h, :] -= learning_rate * grad__L__v_h
 
             z = tanh(V @ x)
             yhat = logistic(W @ z)
@@ -149,7 +158,15 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
             if outfile:
                 outfile.write('%.2f\n' % delta_L)
                 outfile.flush()
+            delta_L_window[it % stop_window_size] = delta_L
             L += delta_L
+
+            it += 1
+            if n_iterations and it == n_iterations:
+                break
+            elif abs(delta_L_window[:it].mean()) < stop_factor:
+                break
+
 
     def loss(self, Yhat, Y):
         log_Yhat = log(Yhat)
