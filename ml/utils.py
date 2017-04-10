@@ -111,6 +111,11 @@ def stop_if_nonfinite(x):
     ipdb.set_trace()
 
 
+def random_uniform(low, high, shape):
+    return (np.random.uniform(low, high, size=np.prod(shape))
+            .reshape(shape))
+
+
 def split(X, labels):
     """
     A generator yielding subsets of data defined by the labels.

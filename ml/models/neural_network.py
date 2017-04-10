@@ -12,6 +12,7 @@ from ml.models.base import Classifier
 from ml.utils import log
 from ml.utils import logistic
 from ml.utils import one_hot_encode_array
+from ml.utils import random_uniform
 
 
 __all__ = ['SingleLayerTanhLogisticNeuralNetwork']
@@ -76,7 +77,9 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
         self.W = None
 
     def predict(self, X):
+        X = self.prepare_data(X)
         Z = tanh(self.V @ X.T)
+        Z[-1, :] = 1
         Yhat = logistic(self.W @ Z).T
         return Yhat
 
@@ -104,11 +107,14 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
         K = self.K
 
         n, d = X.shape
+        # X has extra offset dimension containing all 1s
+        # The hidden layer z also has a unit whose value is always 1
+        d -= 1
 
-        V = self.V = np.random.uniform(-1, 1, size=H * d).reshape((H, d))
-        W = self.W = np.random.uniform(-1, 1, size=K * H).reshape((K, H))
+        V = self.V = random_uniform(-1, 1, (H + 1, d + 1))
+        W = self.W = random_uniform(-1, 1, (K, H + 1))
 
-        Yhat = self.predict(X)
+        Yhat = self.predict(X[:, :-1])
 
         L = self.loss(Yhat, Y)
         print('Loss: %.2f' % L)
@@ -124,6 +130,7 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
 
             x = X[i, :]
             z = tanh(V @ x)
+            z[-1] = 1  # The last row of V is unused; z[-1] must always be 1, just as x[-1].
             yhat = Yhat[i, :]
             y = Y[i, :]
             L_i_before = self.loss(yhat, y)
@@ -145,6 +152,7 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
                 V[h, :] -= learning_rate * grad__L__v_h
 
             z = tanh(V @ x)
+            z[-1] = 1  # see above
             yhat = logistic(W @ z)
 
             assert np.isfinite(yhat).all()
@@ -177,17 +185,25 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
 
         return (Y * log_Yhat + (1 - Y) * log_Yhat_inv).sum()
 
-    def prepare_data(self, X, y):
+    def prepare_data(self, X, y=None):
         n, d = X.shape
+        X = np.hstack([X, np.ones((n, 1))])
+        if y is None:
+            return X
+
         nY, = y.shape
         assert nY == n
-        self.K = len(set(y))
+        K = len(set(y))
         # Demand that labels are integers 1...max(y)
         if not np.issubdtype(y.dtype, np.int):
             y_int = np.floor(y).astype(np.int)
             assert (y_int == y).all()
             y = y_int
-        assert set(y) == set(np.arange(self.K) + 1)
+
+        assert set(y) == set(np.arange(K) + 1), \
+            'Some labels are not represented in training data'
+
+        self.K = K
         Y = one_hot_encode_array(y)
         return X, Y
 
