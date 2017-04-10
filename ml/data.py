@@ -25,10 +25,5 @@ class LabeledData(np.ndarray):
         n, d = self.X.shape
         row_indices = list(range(n))
         shuffle(row_indices)
-        return (
-            LabeledData(
-                self[row_indices[:n_partition]]
-            ),
-            LabeledData(
-                self[row_indices[n_partition:]]
-            ))
+        return (self[row_indices[:n_partition]].view(LabeledData),
+                self[row_indices[n_partition:]].view(LabeledData))
