@@ -4,6 +4,7 @@ from functools import partial
 from random import sample
 
 import numpy as np
+from numpy import inf
 from numpy import tanh
 from scipy.stats import describe
 
@@ -12,12 +13,14 @@ from ml.utils import log
 from ml.utils import logistic
 from ml.utils import one_hot_encode_array
 
+
+__all__ = ['SingleLayerTanhLogisticNeuralNetwork']
+
 describe = partial(describe, axis=None)
 log = partial(log, check=False)
 logistic = partial(logistic, check=True)
 
-
-__all__ = ['SingleLayerTanhLogisticNeuralNetwork']
+EPSILON = sys.float_info.epsilon
 
 
 class NeuralNetwork(Classifier):
@@ -77,7 +80,7 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
         Yhat = logistic(self.W @ Z).T
         return Yhat
 
-    def fit(self, X, y, n_iterations, eps=1e-3):
+    def fit(self, X, y, n_iterations, eps=1e-3, outfile=None):
         """
         \grad_{W_k} L = \partiald{L}{\yhat_k} \grad_{W_k} \yhat_k
             \partiald{L}{\yhat_k} = \frac{y_k - \yhat_k}{\yhat_k (1 - \yhat_k)}
@@ -103,7 +106,10 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
         L = self.loss(Yhat, Y)
         print('Loss: %.2f' % L)
 
-        for it in range(n_iterations):
+        for it in range(int(n_iterations)):
+
+            if it % 1000 == 0:
+                sys.stderr.write('%d\n' % it)
 
             i, = sample(range(n), 1)
 
@@ -113,7 +119,7 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
             y = Y[i, :]
             L_i_before = self.loss(yhat, y)
 
-            grad__L__yhat = (y - yhat) / (yhat * (1 - yhat))
+            grad__L__yhat = (y - yhat) / np.clip((yhat * (1 - yhat)), EPSILON, inf)
 
             # Update W
             grad__L__z = np.zeros_like(z)
@@ -131,20 +137,26 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
 
             z = tanh(V @ x)
             yhat = logistic(W @ z)
+
+            assert np.isfinite(yhat).all()
+
             Yhat[i, :] = yhat
             L_i_after = self.loss(yhat, y)
-            assert L_i_after < L_i_before
-            L += (L_i_after - L_i_before)
-            print('Loss: %.2f' % L)
-            assert abs(L - self.loss(Yhat, Y)) < 1e-6
+            assert np.isfinite(L_i_after)
+            delta_L = L_i_after - L_i_before
+            if not delta_L < 1e-3:
+                sys.stderr.write("Δ L = %.2f\n" % delta_L)
+            if outfile:
+                outfile.write('%.2f\n' % delta_L)
+                outfile.flush()
+            L += delta_L
 
     def loss(self, Yhat, Y):
         log_Yhat = log(Yhat)
         log_Yhat_inv = log(1 - Yhat)
 
-        epsilon = sys.float_info.epsilon
-        log_Yhat[~np.isfinite(log_Yhat)] = log(epsilon)
-        log_Yhat_inv[~np.isfinite(log_Yhat_inv)] = log(epsilon)
+        log_Yhat[~np.isfinite(log_Yhat)] = log(EPSILON)
+        log_Yhat_inv[~np.isfinite(log_Yhat_inv)] = log(EPSILON)
 
         return (Y * log_Yhat + (1 - Y) * log_Yhat_inv).sum()
 

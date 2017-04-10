@@ -102,6 +102,15 @@ def multiply_with_zeros_and_nonfinite_values(a, b):
     return prod
 
 
+def stop_if_nonfinite(x):
+    if np.isfinite(x).all():
+        return x
+    import sys
+    import ipdb
+    sys.stderr.write('Non-finite values found\n')
+    ipdb.set_trace()
+
+
 def split(X, labels):
     """
     A generator yielding subsets of data defined by the labels.
