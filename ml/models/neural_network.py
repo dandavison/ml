@@ -178,6 +178,7 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
             elif abs(delta_L_window[:it].mean()) < stop_factor:
                 break
 
+        self.locals = locals()
 
     def loss(self, Yhat, Y):
         log_Yhat = log(Yhat)
