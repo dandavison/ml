@@ -111,8 +111,11 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
         # The hidden layer z also has a unit whose value is always 1
         d -= 1
 
-        V = self.V = random_uniform(-1, 1, (H + 1, d + 1))
-        W = self.W = random_uniform(-1, 1, (K, H + 1))
+        if self.V is None:
+            self.V = random_uniform(-1, 1, (H + 1, d + 1))
+        if self.W is None:
+            self.W = random_uniform(-1, 1, (K, H + 1))
+        V, W = self.V, self.W
 
         Yhat = self.predict(X[:, :-1])
 
