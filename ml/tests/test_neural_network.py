@@ -13,15 +13,16 @@ class TestNeuralNetwork(TestCase):
         One 1-d sample point. One hidden layer.
         """
         X = array([[0]])
+        y = array([1])
         net = SingleLayerTanhLogisticNeuralNetwork(n_hidden_units=1)
         net.V = array([[0, 0],
                        [nan, nan]])  # last row should be ignored
-        net.W = array([[0, 0],
-                       [0, 0]])
+        net.W = array([[0, 0]])
         Yhat = net.predict(X)
+
         self.assertEqualArrays(
             Yhat,
-            array([[0.5, 0.5]]))
+            array([[0.5]]))
 
 
 if __name__ == '__main__':
