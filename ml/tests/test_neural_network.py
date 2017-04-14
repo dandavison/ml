@@ -1,6 +1,9 @@
+import sys
+
 import numpy as np
 from numpy import array
 from numpy import nan
+from sklearn.neural_network.multilayer_perceptron import MLPClassifier
 
 from ml.models import SingleLayerTanhLogisticNeuralNetwork
 from ml.tests import TestCase
@@ -56,9 +59,55 @@ class TestNeuralNetwork(TestCase):
             array([0, 0]),
         )
 
+    def test_2(self):
+        Xy = array([
+            [-1, -1, 1],
+            [ 0, 0, 1],
+            [ 1, 1, 1],
+            [ 99, 99, 2],
+            [100, 100, 2],
+            [111, 111, 2],
+        ])
+        X = Xy[:, :-1]
+        y = Xy[:, -1]
 
+        learning_rate = 0.01
+        n_iterations = 2
+
+        net = SingleLayerTanhLogisticNeuralNetwork(n_hidden_units=1)
+        sk_net = SKLearnNeuralNet(
+            learning_rate_init=learning_rate,
+            max_iter=n_iterations,
+        )
+        net.fit(
+            X, y,
+            learning_rate=learning_rate,
+            outfile=sys.stdout,
+            n_iterations=n_iterations,
+        )
+        sk_net.fit(X, y)
+
+        print(sk_net.predict(X))
+        print(net.predict(X))
+        import ipdb ; ipdb.set_trace()
+
+
+class SKLearnNeuralNet(MLPClassifier):
+
+    def __init__(self, learning_rate_init, max_iter):
+        super(SKLearnNeuralNet, self).__init__(
+            learning_rate_init=learning_rate_init,
+            max_iter=max_iter,
+            # Fixed
+            hidden_layer_sizes=(2,),
+            activation='tanh',
+            solver='sgd',
+            alpha=0,
+            batch_size=1,
+            verbose=True,
+        )
 
 
 if __name__ == '__main__':
-    TestNeuralNetwork().test_1()
+    TestNeuralNetwork().test_2()
     print('OK')
