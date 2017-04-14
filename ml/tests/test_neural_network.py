@@ -46,6 +46,18 @@ class TestNeuralNetwork(TestCase):
             array([0, 0]),
         )
 
+        self.assertEqualArrays(
+            net.locals['grad__z_h__v_h'],
+            array([0, 0]),
+        )
+
+        self.assertEqualArrays(
+            net.locals['grad__L__v_h'],
+            array([0, 0]),
+        )
+
+
+
 
 if __name__ == '__main__':
     TestNeuralNetwork().test_1()
