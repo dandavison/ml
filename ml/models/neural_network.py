@@ -189,8 +189,11 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
                 grad__yhat_k__W[k, :] = z * yhat[k] * (1 - yhat[k])
                 self.estimate_grad__yhat_k__W_k(k, z, W, y, grad__yhat_k__W[k, :])
 
-                grad__yhat_k__z = W[k, :] * yhat[k] * (1 - yhat[k])
-                self.estimate_grad__yhat_k__z(k, z, W, y, grad__yhat_k__z)
+                # Last element corresponds to constant offset 1 appended to z
+                # vector; it does not change / has no derivative.
+                grad__yhat_k__z = W[k, :-1] * yhat[k] * (1 - yhat[k])
+
+                self.estimate_grad__yhat_k__z(k, z[:-1], W[:, :-1], y, grad__yhat_k__z)
 
                 grad__L__z += grad__L__yhat[k] * grad__yhat_k__z
 
@@ -202,7 +205,7 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
             for k in range(K):
                 W[k, :] -= learning_rate * grad__L__yhat[k] * grad__yhat_k__W[k, :]
 
-            self.estimate_grad__L__z(z, W, y, grad__L__z)
+            self.estimate_grad__L__z(z[:-1], W[:, :-1], y, grad__L__z)
 
             # Update V
             grad__L__V = nans_like(V)
