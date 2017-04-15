@@ -83,6 +83,13 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
         Yhat = logistic(self.W @ Z).T
         return Yhat
 
+    def forward(self, x, V, W):
+        # TODO combine with predict()
+        z = tanh(V @ x)
+        z[-1] = 1  # The last row of V is unused; z[-1] must always be 1, just as x[-1].
+        yhat = logistic(W @ z)
+        return z, yhat
+
     def fit(self, X, y,
             learning_rate=1e-3,
             n_iterations=None,
@@ -154,9 +161,7 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
                 grad__L__v_h = grad__L__z[h] * grad__z_h__v_h
                 V[h, :] -= learning_rate * grad__L__v_h
 
-            z = tanh(V @ x)
-            z[-1] = 1  # see above
-            yhat = logistic(W @ z)
+            z, yhat = self.forward(x, V, W)
 
             assert np.isfinite(yhat).all()
 
