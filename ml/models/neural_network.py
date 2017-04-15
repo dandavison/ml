@@ -241,6 +241,8 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
             eps_vec[h, j] = eps
             z_plus = tanh((V + eps_vec) @ x)
             z_minus = tanh((V - eps_vec) @ x)
+            z_plus[-1] = 1
+            z_minus[-1] = 1
             return (z_plus[h] - z_minus[h]) / (2 * eps)
         return self._do_finite_difference_estimate(
             d,
