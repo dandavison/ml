@@ -188,7 +188,7 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
                 self.estimate_grad__yhat_k__W_k(k, z, W, y, grad__yhat_k__W_k)
 
                 grad__yhat_k__z = W[k, :] * yhat[k] * (1 - yhat[k])
-                self.estimate_grad__yhat_k__z(k, z, y, grad__yhat_k__z)
+                self.estimate_grad__yhat_k__z(k, z, W, y, grad__yhat_k__z)
 
                 grad__L__z += grad__L__yhat[k] * grad__yhat_k__z
 
@@ -198,7 +198,7 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
                 if not (loss_after <= loss_before):
                     sys.stderr.write('Loss did not decrease for W\n')
 
-            self.estimate_grad__L__z(z, y, grad__L__z)
+            self.estimate_grad__L__z(z, W, y, grad__L__z)
 
             # Update V
             for h in range(H):
@@ -206,7 +206,7 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
                 self.estimate_grad__z_h__V_h(h, x, self.V, grad__z_h__V_h)
 
                 grad__L__V_h = grad__L__z[h] * grad__z_h__V_h
-                self.estimate_grad__L__V_h(h, x, V, y, grad__L__V_h)
+                self.estimate_grad__L__V_h(h, x, V, W, y, grad__L__V_h)
 
                 loss_before = self.compute_loss(X[:, :-1], Y)
                 V[h, :] -= learning_rate * grad__L__V_h
@@ -249,13 +249,13 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
             grad,
         )
 
-    def estimate_grad__yhat_k__z(self, k, z, y, grad):
+    def estimate_grad__yhat_k__z(self, k, z, W, y, grad):
         eps = EPSILON_FINITE_DIFFERENCE
         def d(h):
             eps_vec = np.zeros_like(z)
             eps_vec[h] = eps
-            yhat_plus = logistic(self.W @ (z + eps_vec))
-            yhat_minus = logistic(self.W @ (z - eps_vec))
+            yhat_plus = logistic(W @ (z + eps_vec))
+            yhat_minus = logistic(W @ (z - eps_vec))
             return (yhat_plus[k] - yhat_minus[k]) / (2 * eps)
         return self._do_finite_difference_estimate(
             d,
@@ -294,13 +294,13 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
             grad,
         )
 
-    def estimate_grad__L__z(self, z, y, grad):
+    def estimate_grad__L__z(self, z, W, y, grad):
         eps = EPSILON_FINITE_DIFFERENCE
         def d(h):
             eps_vec = np.zeros_like(z)
             eps_vec[h] = eps
-            yhat_plus = logistic(self.W @ (z + eps_vec))
-            yhat_minus = logistic(self.W @ (z - eps_vec))
+            yhat_plus = logistic(W @ (z + eps_vec))
+            yhat_minus = logistic(W @ (z - eps_vec))
             L_plus = self.loss(yhat_plus, y)
             L_minus = self.loss(yhat_minus, y)
             return (L_plus - L_minus) / (2 * eps)
@@ -311,15 +311,15 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
             grad,
         )
 
-    def estimate_grad__L__V_h(self, h, x, V, y, grad):
+    def estimate_grad__L__V_h(self, h, x, V, W, y, grad):
         eps = EPSILON_FINITE_DIFFERENCE
         def d(j):
             eps_vec = np.zeros_like(V)
             eps_vec[h, j] = eps
             z_plus = tanh((V + eps_vec) @ x)
             z_minus = tanh((V - eps_vec) @ x)
-            yhat_plus = logistic(self.W @ z_plus)
-            yhat_minus = logistic(self.W @ z_minus)
+            yhat_plus = logistic(W @ z_plus)
+            yhat_minus = logistic(W @ z_minus)
             L_plus = self.loss(yhat_plus, y)
             L_minus = self.loss(yhat_minus, y)
             return (L_plus - L_minus) / (2 * eps)
