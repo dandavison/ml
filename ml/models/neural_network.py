@@ -38,7 +38,7 @@ log = partial(log, check=False)
 logistic = partial(logistic, check=True)
 
 EPSILON = sys.float_info.epsilon
-EPSILON_FINITE_DIFFERENCE = 1e-5
+EPSILON_FINITE_DIFFERENCE = 1e-6
 
 
 class NeuralNetwork(Classifier):
