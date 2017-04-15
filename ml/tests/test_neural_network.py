@@ -61,10 +61,10 @@ class TestNeuralNetwork(TestCase):
 
     def test_2(self):
         Xy = array([
-            [-1, -1, 1],
-            [ 0, 0, 1],
-            [ 1, 1, 1],
-            [ 99, 99, 2],
+            [-1,   -1, 1],
+            [ 0,    0, 1],
+            [ 1,    1, 1],
+            [ 99,  99, 2],
             [100, 100, 2],
             [111, 111, 2],
         ])
@@ -72,24 +72,24 @@ class TestNeuralNetwork(TestCase):
         y = Xy[:, -1]
 
         learning_rate = 0.01
-        n_iterations = 2
+        n_iterations = 10
 
         net = SingleLayerTanhLogisticNeuralNetwork(n_hidden_units=1)
+        net.fit(
+            X, y,
+            learning_rate=learning_rate,
+            outfile=None,
+            n_iterations=n_iterations,
+        )
+        # print(np.argmax(net.predict(X), axis=1))
+        print(net.predict(X))
+
         sk_net = SKLearnNeuralNet(
             learning_rate_init=learning_rate,
             max_iter=n_iterations,
         )
-        net.fit(
-            X, y,
-            learning_rate=learning_rate,
-            outfile=sys.stdout,
-            n_iterations=n_iterations,
-        )
         sk_net.fit(X, y)
-
         print(sk_net.predict(X))
-        print(net.predict(X))
-        import ipdb ; ipdb.set_trace()
 
 
 class SKLearnNeuralNet(MLPClassifier):
@@ -104,7 +104,7 @@ class SKLearnNeuralNet(MLPClassifier):
             solver='sgd',
             alpha=0,
             batch_size=1,
-            verbose=True,
+            verbose=False,
         )
 
 
