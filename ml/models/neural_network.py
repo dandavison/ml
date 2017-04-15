@@ -143,18 +143,17 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
         Yhat = self.predict(X[:, :-1])
 
         L = self.loss(Yhat, Y)
-        if outfile:
-            lines = [
-                str(X),
-                str(Y),
-                'X: %d x %d' % X.shape,
-                'Y: %d x %d' % Y.shape,
-                'H = %d' % H,
-                'K = %d' % K,
-                'L = %.2f\n' % L,
-            ]
-            outfile.write('\n'.join(lines) + '\n\n')
-            outfile.flush()
+        lines = [
+            str(X),
+            str(Y),
+            'X: %d x %d' % X.shape,
+            'Y: %d x %d' % Y.shape,
+            'H = %d' % H,
+            'K = %d' % K,
+            'L = %.2f\n' % L,
+        ]
+        sys.stdout.write('\n'.join(lines) + '\n\n')
+        sys.stdout.flush()
 
         delta_L_window = np.zeros(stop_window_size)
         it = 0
@@ -175,7 +174,7 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
             y = Y[i, :]
 
             if outfile:
-                self.log_state(outfile, **locals())
+                self.log_state(locals())
 
             L_i_before = self.loss(yhat, y)
 
@@ -229,7 +228,7 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
             L += delta_L
 
             if outfile:
-                self.log_state(outfile, **locals())
+                self.log_state(locals())
 
             it += 1
 
@@ -246,7 +245,7 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
         return self._do_finite_difference_estimate(
             d,
             V[h, :],
-            'grad__z[%d]__v[%d]' % (h, h),
+            'grad__z[%d]__V[%d,:]' % (h, h),
             grad,
         )
 
@@ -336,7 +335,7 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
         grad__n = np.array(list(map(d, range(len(wrt)))))
         col = get_colour(re.subn(r'\d+', '%d', label))
         print(col('%s = %s' % (label, grad__n)))
-        print(col(', '.join('%.5f' % g for g in describe(grad__n - grad).minmax)))
+        print(col(', '.join('%.9f' % g for g in describe(grad__n - grad).minmax)))
         return grad__n
 
     def compute_loss(self, X, Y):
@@ -380,8 +379,8 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
         return X, Y
 
     @staticmethod
-    def log_state(outfile, **kwargs):
-        locals().update(kwargs)
+    def log_state(state):
+        locals().update(state)
         lines = [
             'i = %d' % i,
             'x = %s' % x,
