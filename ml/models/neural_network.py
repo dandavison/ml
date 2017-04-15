@@ -123,7 +123,7 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
         \grad_{V_h} L = \partiald{L}{z_h} \grad_{V_h} z_h
             \grad_{V_h} z_h = x(1 - z_h^2)
         """
-        assert stop_factor or n_iterations
+        assert stop_factor or n_iterations is not None
 
         X, Y = self.prepare_data(X, y)
         H = self.H
@@ -151,6 +151,10 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
 
             if it % 1000 == 0:
                 sys.stderr.write('%d\n' % it)
+            if n_iterations is not None and it == n_iterations:
+                break
+            elif stop_factor and it and abs(delta_L_window[:it].mean()) < stop_factor:
+                break
 
             i, = sample(range(n), 1)
 
@@ -205,10 +209,6 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
             L += delta_L
 
             it += 1
-            if n_iterations and it == n_iterations:
-                break
-            elif abs(delta_L_window[:it].mean()) < stop_factor:
-                break
 
         self.locals = locals()
 
