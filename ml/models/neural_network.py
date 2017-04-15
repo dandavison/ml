@@ -143,14 +143,24 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
         Yhat = self.predict(X[:, :-1])
 
         L = self.loss(Yhat, Y)
-        print('Loss: %.2f' % L)
+        if outfile:
+            lines = [
+                str(X),
+                str(Y),
+                'X: %d x %d' % X.shape,
+                'Y: %d x %d' % Y.shape,
+                'H = %d' % H,
+                'K = %d' % K,
+                'L = %.2f\n' % L,
+            ]
+            outfile.write('\n'.join(lines) + '\n\n')
+            outfile.flush()
 
         delta_L_window = np.zeros(stop_window_size)
         it = 0
         while True:
+            print('%d --------------------------------------' % it)
 
-            if it % 1000 == 0:
-                sys.stderr.write('%d\n' % it)
             if n_iterations is not None and it == n_iterations:
                 break
             elif stop_factor and it and abs(delta_L_window[:it].mean()) < stop_factor:
@@ -163,6 +173,20 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
             z[-1] = 1  # The last row of V is unused; z[-1] must always be 1, just as x[-1].
             yhat = Yhat[i, :]
             y = Y[i, :]
+
+            if outfile:
+                lines = [
+                    'i = %d' % i,
+                    'x = %s' % x,
+                    'V = \n%s' % V,
+                    'z = %s' % z,
+                    'W = \n%s' % W,
+                    'yhat = %s' % yhat,
+                    'y = %s' % y,
+                ]
+                outfile.write('\n'.join(lines) + '\n\n')
+                outfile.flush()
+
             L_i_before = self.loss(yhat, y)
 
             grad__L__yhat = (y - yhat) / np.clip((yhat * (1 - yhat)), EPSILON, inf)
@@ -202,11 +226,26 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
             delta_L = L_i_after - L_i_before
             if not delta_L < 1e-3:
                 sys.stderr.write("Δ L = %.2f\n" % delta_L)
-            if outfile:
-                outfile.write('%.2f\n' % delta_L)
-                outfile.flush()
             delta_L_window[it % stop_window_size] = delta_L
             L += delta_L
+
+            if outfile:
+                lines = [
+                    'i = %d' % i,
+                    'x = %s' % x,
+                    'V = \n%s' % V,
+
+                    'z = %s' % z,
+                    'W = \n%s' % W,
+                    'yhat = %s' % yhat,
+                    'y = %s' % y,
+                    'Δ L = %.2f\n' % delta_L,
+                ]
+                outfile.write('\n'.join(lines) + '\n\n')
+                outfile.flush()
+
+                outfile.write('\n\n------------------------\n\n')
+
 
             it += 1
 
