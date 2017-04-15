@@ -330,6 +330,8 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
             eps_vec[h, j] = eps
             z_plus = tanh((V + eps_vec) @ x)
             z_minus = tanh((V - eps_vec) @ x)
+            z_plus[-1] = 1
+            z_minus[-1] = 1
             yhat_plus = logistic(W @ z_plus)
             yhat_minus = logistic(W @ z_minus)
             L_plus = self.loss(yhat_plus, y)
