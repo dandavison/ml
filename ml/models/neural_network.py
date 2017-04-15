@@ -202,7 +202,12 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
                 self.estimate_grad__yhat_k__z(k, z, y, grad__yhat_k__z)
 
                 grad__L__z += grad__L__yhat[k] * grad__yhat_k__z
+
+                loss_before = self.compute_loss(X[:, :-1], Y)
                 W[k, :] -= learning_rate * grad__L__yhat[k] * grad__yhat_k__W_k
+                loss_after = self.compute_loss(X[:, :-1], Y)
+                if not (loss_after <= loss_before):
+                    sys.stderr.write('Loss did not decrease for W\n')
 
             self.estimate_grad__L__z(z, y, grad__L__z)
 
@@ -214,7 +219,11 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
                 grad__L__V_h = grad__L__z[h] * grad__z_h__V_h
                 self.estimate_grad__L__V_h(h, x, V, y, grad__L__V_h)
 
+                loss_before = self.compute_loss(X[:, :-1], Y)
                 V[h, :] -= learning_rate * grad__L__V_h
+                loss_after = self.compute_loss(X[:, :-1], Y)
+                if not (loss_after <= loss_before):
+                    sys.stderr.write('Loss did not decrease for V\n')
 
             z, yhat = self.forward(x, V, W)
 
@@ -354,6 +363,10 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
         print(col('%s = %s' % (label, grad__n)))
         print(col(', '.join('%.5f' % g for g in describe(grad__n - grad).minmax)))
         return grad__n
+
+    def compute_loss(self, X, Y):
+        Yhat = self.predict(X)
+        return self.loss(Yhat, Y)
 
     def loss(self, Yhat, Y):
         log_Yhat = log(Yhat)
