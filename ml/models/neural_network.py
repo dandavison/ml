@@ -1,4 +1,6 @@
+from __future__ import print_function
 import sys
+import re
 from collections import Counter
 from functools import partial
 from random import sample
@@ -9,10 +11,23 @@ from numpy import tanh
 from scipy.stats import describe
 
 from ml.models.base import Classifier
+from ml.utils import cyclic
 from ml.utils import log
 from ml.utils import logistic
+from ml.utils import memoized
 from ml.utils import one_hot_encode_array
 from ml.utils import random_uniform
+
+from clint.textui.colored import red, blue, green
+red = partial(red, bold=True)
+blue = partial(blue, bold=True)
+green = partial(green, bold=True)
+COLOURS = cyclic([green, blue, red])
+
+
+@memoized
+def get_colour(key):
+    return next(COLOURS)
 
 
 __all__ = ['SingleLayerTanhLogisticNeuralNetwork']
@@ -22,6 +37,7 @@ log = partial(log, check=False)
 logistic = partial(logistic, check=True)
 
 EPSILON = sys.float_info.epsilon
+EPSILON_FINITE_DIFFERENCE = 1e-5
 
 
 class NeuralNetwork(Classifier):
@@ -146,20 +162,31 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
             L_i_before = self.loss(yhat, y)
 
             grad__L__yhat = (y - yhat) / np.clip((yhat * (1 - yhat)), EPSILON, inf)
+            self.estimate_grad__L__yhat(yhat, y, grad__L__yhat)
 
             # Update W
             grad__L__z = np.zeros_like(z)
             for k in range(K):
                 grad__yhat_k__W_k = z * yhat[k] * (1 - yhat[k])
+                self.estimate_grad__yhat_k__W_k(k, z, W, y, grad__yhat_k__W_k)
+
                 grad__yhat_k__z = W[k, :] * yhat[k] * (1 - yhat[k])
+                self.estimate_grad__yhat_k__z(k, z, y, grad__yhat_k__z)
+
                 grad__L__z += grad__L__yhat[k] * grad__yhat_k__z
                 W[k, :] -= learning_rate * grad__L__yhat[k] * grad__yhat_k__W_k
 
+            self.estimate_grad__L__z(z, y, grad__L__z)
+
             # Update V
             for h in range(H):
-                grad__z_h__v_h = x * (1 - z[h] ** 2)
-                grad__L__v_h = grad__L__z[h] * grad__z_h__v_h
-                V[h, :] -= learning_rate * grad__L__v_h
+                grad__z_h__V_h = x * (1 - z[h] ** 2)
+                self.estimate_grad__z_h__V_h(h, x, self.V, grad__z_h__V_h)
+
+                grad__L__V_h = grad__L__z[h] * grad__z_h__V_h
+                self.estimate_grad__L__V_h(h, x, V, y, grad__L__V_h)
+
+                V[h, :] -= learning_rate * grad__L__V_h
 
             z, yhat = self.forward(x, V, W)
 
@@ -184,6 +211,110 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
                 break
 
         self.locals = locals()
+
+    def estimate_grad__z_h__V_h(self, h, x, V, grad):
+        eps = EPSILON_FINITE_DIFFERENCE
+        def d(j):
+            eps_vec = np.zeros_like(V)
+            eps_vec[h, j] = eps
+            z_plus = tanh((V + eps_vec) @ x)
+            z_minus = tanh((V - eps_vec) @ x)
+            return (z_plus[h] - z_minus[h]) / (2 * eps)
+        return self._do_finite_difference_estimate(
+            d,
+            V[h, :],
+            'grad__z[%d]__v[%d]' % (h, h),
+            grad,
+        )
+
+    def estimate_grad__yhat_k__z(self, k, z, y, grad):
+        eps = EPSILON_FINITE_DIFFERENCE
+        def d(h):
+            eps_vec = np.zeros_like(z)
+            eps_vec[h] = eps
+            yhat_plus = logistic(self.W @ (z + eps_vec))
+            yhat_minus = logistic(self.W @ (z - eps_vec))
+            return (yhat_plus[k] - yhat_minus[k]) / (2 * eps)
+        return self._do_finite_difference_estimate(
+            d,
+            z,
+            'grad__yhat[%d]__z' % k,
+            grad,
+        )
+
+    def estimate_grad__yhat_k__W_k(self, k, z, W, y, grad):
+        eps = EPSILON_FINITE_DIFFERENCE
+        def d(h):
+            eps_vec = np.zeros_like(W)
+            eps_vec[k, h] = eps
+            yhat_plus = logistic((W + eps_vec) @ z)
+            yhat_minus = logistic((W - eps_vec) @ z)
+            return (yhat_plus[k] - yhat_minus[k]) / (2 * eps)
+        return self._do_finite_difference_estimate(
+            d,
+            W[k, :],
+            'grad__yhat[%d]__W[%d,:]' % (k, k),
+            grad,
+        )
+
+    def estimate_grad__L__yhat(self, yhat, y, grad):
+        eps = EPSILON_FINITE_DIFFERENCE
+        def d(k):
+            eps_vec = np.zeros_like(yhat)
+            eps_vec[k] = eps
+            L_plus = self.loss(yhat + eps_vec, y)
+            L_minus = self.loss(yhat - eps_vec, y)
+            return (L_plus - L_minus) / (2 * eps)
+        return self._do_finite_difference_estimate(
+            d,
+            yhat,
+            'grad__L__yhat',
+            grad,
+        )
+
+    def estimate_grad__L__z(self, z, y, grad):
+        eps = EPSILON_FINITE_DIFFERENCE
+        def d(h):
+            eps_vec = np.zeros_like(z)
+            eps_vec[h] = eps
+            yhat_plus = logistic(self.W @ (z + eps_vec))
+            yhat_minus = logistic(self.W @ (z - eps_vec))
+            L_plus = self.loss(yhat_plus, y)
+            L_minus = self.loss(yhat_minus, y)
+            return (L_plus - L_minus) / (2 * eps)
+        return self._do_finite_difference_estimate(
+            d,
+            z,
+            'grad__L__z',
+            grad,
+        )
+
+    def estimate_grad__L__V_h(self, h, x, V, y, grad):
+        eps = EPSILON_FINITE_DIFFERENCE
+        def d(j):
+            eps_vec = np.zeros_like(V)
+            eps_vec[h, j] = eps
+            z_plus = tanh((V + eps_vec) @ x)
+            z_minus = tanh((V - eps_vec) @ x)
+            yhat_plus = logistic(self.W @ z_plus)
+            yhat_minus = logistic(self.W @ z_minus)
+            L_plus = self.loss(yhat_plus, y)
+            L_minus = self.loss(yhat_minus, y)
+            return (L_plus - L_minus) / (2 * eps)
+        return self._do_finite_difference_estimate(
+            d,
+            V[h, :],
+            'grad__L__V_h',
+            grad,
+        )
+
+    @staticmethod
+    def _do_finite_difference_estimate(d, wrt, label, grad):
+        grad__n = np.array(list(map(d, range(len(wrt)))))
+        col = get_colour(re.subn(r'\d+', '%d', label))
+        print(col('%s = %s' % (label, grad__n)))
+        print(col(', '.join('%.5f' % g for g in describe(grad__n - grad).minmax)))
+        return grad__n
 
     def loss(self, Yhat, Y):
         log_Yhat = log(Yhat)
