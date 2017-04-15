@@ -175,17 +175,7 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
             y = Y[i, :]
 
             if outfile:
-                lines = [
-                    'i = %d' % i,
-                    'x = %s' % x,
-                    'V = \n%s' % V,
-                    'z = %s' % z,
-                    'W = \n%s' % W,
-                    'yhat = %s' % yhat,
-                    'y = %s' % y,
-                ]
-                outfile.write('\n'.join(lines) + '\n\n')
-                outfile.flush()
+                self.log_state(outfile, **locals())
 
             L_i_before = self.loss(yhat, y)
 
@@ -239,22 +229,7 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
             L += delta_L
 
             if outfile:
-                lines = [
-                    'i = %d' % i,
-                    'x = %s' % x,
-                    'V = \n%s' % V,
-
-                    'z = %s' % z,
-                    'W = \n%s' % W,
-                    'yhat = %s' % yhat,
-                    'y = %s' % y,
-                    'Δ L = %.2f\n' % delta_L,
-                ]
-                outfile.write('\n'.join(lines) + '\n\n')
-                outfile.flush()
-
-                outfile.write('\n\n------------------------\n\n')
-
+                self.log_state(outfile, **locals())
 
             it += 1
 
@@ -403,6 +378,21 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
         self.K = K
         Y = one_hot_encode_array(y)
         return X, Y
+
+    @staticmethod
+    def log_state(outfile, **kwargs):
+        locals().update(kwargs)
+        lines = [
+            'i = %d' % i,
+            'x = %s' % x,
+            'V = \n%s' % V,
+            'z = %s' % z,
+            'W = \n%s' % W,
+            'yhat = %s' % yhat,
+            'y = %s' % y,
+        ]
+        outfile.write('\n'.join(lines) + '\n\n')
+        outfile.flush()
 
 
 class Layer:
