@@ -171,3 +171,9 @@ def one_hot_encode_array(x):
     encoded = np.zeros((x.size, x.max()), dtype=np.int)
     encoded[np.arange(x.size), x - 1] = 1
     return encoded
+
+
+def nans_like(x):
+    a = np.zeros_like(x)
+    a[:] = np.nan
+    return a
