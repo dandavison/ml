@@ -368,7 +368,7 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
         log_Yhat[~np.isfinite(log_Yhat)] = log(EPSILON)
         log_Yhat_inv[~np.isfinite(log_Yhat_inv)] = log(EPSILON)
 
-        return (Y * log_Yhat + (1 - Y) * log_Yhat_inv).sum()
+        return -(Y * log_Yhat + (1 - Y) * log_Yhat_inv).sum()
 
     def prepare_data(self, X, y=None):
         n, d = X.shape
