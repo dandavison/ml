@@ -61,6 +61,9 @@ class TestNeuralNetwork(TestCase):
         )
 
     def test_2(self):
+        self._do_test_2(n_hidden_units=1)
+
+    def _do_test_2(self, n_hidden_units):
         Xy = array([
             [-1,   -1, 1],
             [ 0,    0, 1],
@@ -80,7 +83,7 @@ class TestNeuralNetwork(TestCase):
         np.random.seed(rng_seed)
 
         net = SingleLayerTanhLogisticNeuralNetwork(
-            n_hidden_units=1,
+            n_hidden_units=n_hidden_units,
             learning_rate=learning_rate,
             outfile=None,
             n_iterations=n_iterations,
