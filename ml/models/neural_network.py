@@ -96,8 +96,12 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
                  learning_rate,
                  n_iterations=None,
                  stop_factor=None,
-                 stop_window_size=100,
+                 stop_window_size=None,
                  outfile=None):
+
+        if stop_window_size:
+            assert DEBUG
+
         self.H = n_hidden_units
         self.K = None  # Determined empirically as distinct training labels
         self.V = None
@@ -168,8 +172,10 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
             print('\n'.join(lines) + '\n\n')
 
         delta_L_window = np.zeros(self.stop_window_size)
-        it = 0
+        it = -1
         while True:
+            it += 1
+
             if not QUIET:
                 if it % 100 == 0:
                     print('%d %f' % (it, L))
@@ -187,7 +193,8 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
             yhat = Yhat[i, :]
             y = Y[i, :]
 
-            L_i_before = self.loss(yhat, y)
+            if DEBUG:
+                L_i_before = self.loss(yhat, y)
 
             grad__L__yhat = (yhat - y) / np.clip((yhat * (1 - yhat)), EPSILON, inf)
             if USE_NUMERICAL_DERIVATIVES:
@@ -209,10 +216,11 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
 
                 grad__L__z += grad__L__yhat[k] * grad__yhat_k__z
 
-                loss_before = self.compute_loss(X[:, :-1], Y)
-                loss_after = self.compute_loss(X[:, :-1], Y)
-                if not (loss_after <= loss_before):
-                    stderr.write('Loss did not decrease for W\n')
+                if DEBUG:
+                    loss_before = self.compute_loss(X[:, :-1], Y)
+                    loss_after = self.compute_loss(X[:, :-1], Y)
+                    if not (loss_after <= loss_before):
+                        stderr.write('Loss did not decrease for W\n')
 
             if USE_NUMERICAL_DERIVATIVES:
                 grad__L__z = self.estimate_grad__L__z(z[:-1], W[:, :-1], y, grad__L__z)
@@ -245,21 +253,22 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
             assert np.isfinite(yhat).all()
 
             Yhat[i, :] = yhat
-            L_i_after = self.loss(yhat, y)
-            assert np.isfinite(L_i_after)
-            delta_L = L_i_after - L_i_before
-            delta_L_window[it % self.stop_window_size] = delta_L
-            L += delta_L
-
-            if DEBUG and not delta_L < 1e-3:
-                print("L, Δ L = %.2f, %.2f\n" % (L, delta_L))
 
             if self.outfile:
                 self.outfile.write('%d %f\n' % (it, L))
 
-            it += 1
+            if DEBUG:
+                L_i_after = self.loss(yhat, y)
+                assert np.isfinite(L_i_after)
+                delta_L = L_i_after - L_i_before
+                delta_L_window[it % self.stop_window_size] = delta_L
+                L += delta_L
 
-        self.locals = locals()
+                if not delta_L < 1e-3:
+                    print("L, Δ L = %.2f, %.2f\n" % (L, delta_L))
+
+                self.locals = locals()
+
 
         return self
 
