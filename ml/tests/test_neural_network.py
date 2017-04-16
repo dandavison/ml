@@ -71,7 +71,7 @@ class TestNeuralNetwork(TestCase):
         X = Xy[:, :-1]
         y = Xy[:, -1]
 
-        learning_rate = 0.1
+        learning_rate = 0.01
         n_iterations = 10
 
         net = SingleLayerTanhLogisticNeuralNetwork(n_hidden_units=1)
