@@ -180,19 +180,20 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
             L_i_before = self.loss(yhat, y)
 
             grad__L__yhat = (y - yhat) / np.clip((yhat * (1 - yhat)), EPSILON, inf)
-            grad__L__yhat = self.estimate_grad__L__yhat(yhat, y, grad__L__yhat)
+            self.estimate_grad__L__yhat(yhat, y, grad__L__yhat)
 
             # Update W
-            grad__L__z = np.zeros_like(z[:-1])
+            grad__L__z = np.zeros_like(z)
             grad__yhat_k__W = nans_like(W)
             for k in range(K):
                 grad__yhat_k__W[k, :] = z * yhat[k] * (1 - yhat[k])
-                grad__yhat_k__W[k, :] = self.estimate_grad__yhat_k__W_k(k, z, W, y, grad__yhat_k__W[k, :])
+                self.estimate_grad__yhat_k__W_k(k, z, W, y, grad__yhat_k__W[k, :])
 
                 # Last element corresponds to constant offset 1 appended to z
                 # vector; it does not change / has no derivative.
                 grad__yhat_k__z = W[k, :-1] * yhat[k] * (1 - yhat[k])
-                grad__yhat_k__z = self.estimate_grad__yhat_k__z(k, z[:-1], W[:, :-1], y, grad__yhat_k__z)
+
+                self.estimate_grad__yhat_k__z(k, z[:-1], W[:, :-1], y, grad__yhat_k__z)
 
                 grad__L__z += grad__L__yhat[k] * grad__yhat_k__z
 
@@ -201,19 +202,19 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
                 if not (loss_after <= loss_before):
                     stderr.write('Loss did not decrease for W\n')
 
-            grad__L__z = self.estimate_grad__L__z(z[:-1], W[:, :-1], y, grad__L__z)
-
             for k in range(K):
                 W[k, :] -= learning_rate * grad__L__yhat[k] * grad__yhat_k__W[k, :]
+
+            self.estimate_grad__L__z(z[:-1], W[:, :-1], y, grad__L__z)
 
             # Update V
             grad__L__V = nans_like(V)
             for h in range(H):
                 grad__z_h__V_h = x * (1 - z[h] ** 2)
-                grad__z_h__V_h = self.estimate_grad__z_h__V_h(h, x, self.V, grad__z_h__V_h)
+                self.estimate_grad__z_h__V_h(h, x, self.V, grad__z_h__V_h)
 
                 grad__L__V[h, :] = grad__L__z[h] * grad__z_h__V_h
-                grad__L__V[h, :] = self.estimate_grad__L__V_h(h, x, V, W, y, grad__L__V[h, :])
+                self.estimate_grad__L__V_h(h, x, V, W, y, grad__L__V[h, :])
 
                 loss_before = self.compute_loss(X[:, :-1], Y)
                 loss_after = self.compute_loss(X[:, :-1], Y)
