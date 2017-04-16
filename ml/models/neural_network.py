@@ -26,7 +26,7 @@ blue = partial(blue, bold=True)
 green = partial(green, bold=True)
 COLOURS = cyclic([green, blue, red])
 DEBUG = False
-QUIET = False
+QUIET = True
 USE_NUMERICAL_DERIVATIVES = False
 
 
@@ -251,8 +251,8 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
             delta_L_window[it % self.stop_window_size] = delta_L
             L += delta_L
 
-            if not delta_L < 1e-3:
-                stderr.write("L, Δ L = %.2f, %.2f\n" % (L, delta_L))
+            if DEBUG and not delta_L < 1e-3:
+                print("L, Δ L = %.2f, %.2f\n" % (L, delta_L))
 
             if self.outfile:
                 self.outfile.write('%d %f\n' % (it, L))

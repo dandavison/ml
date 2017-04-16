@@ -82,7 +82,7 @@ class TestNeuralNetwork(TestCase):
         net = SingleLayerTanhLogisticNeuralNetwork(
             n_hidden_units=1,
             learning_rate=learning_rate,
-            outfile=stdout,
+            outfile=None,
             n_iterations=n_iterations,
         )
         net.fit(X, y)
@@ -124,4 +124,3 @@ class SKLearnNeuralNet(MLPClassifier):
 
 if __name__ == '__main__':
     TestNeuralNetwork().test_2()
-    print('OK')
