@@ -3,7 +3,7 @@ import sys
 import re
 from collections import Counter
 from functools import partial
-from random import sample
+from random import shuffle
 from sys import stderr
 
 import numpy as np
@@ -173,6 +173,8 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
 
         # Allocate
         grad__L__z = np.zeros((H,))
+        sample_indices = list(range(n))
+        shuffle(sample_indices)
 
         delta_L_window = np.zeros(self.stop_window_size)
         it = -1
@@ -188,7 +190,7 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
             elif (self.stop_factor and it and abs(delta_L_window[:it].mean()) < self.stop_factor):
                 break
 
-            i, = sample(range(n), 1)
+            i = sample_indices[it % n]
 
             x = X[i, :]
             z = tanh(V @ x)
@@ -199,7 +201,7 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
             if DEBUG:
                 L_i_before = self.loss(yhat, y)
 
-            grad__L__yhat = (yhat - y) / np.clip((yhat * (1 - yhat)), EPSILON, inf)
+            grad__L__yhat = (yhat - y) / (yhat * (1 - yhat))  # np.clip((.), EPSILON, inf)
             if USE_NUMERICAL_DERIVATIVES:
                 grad__L__yhat = self.estimate_grad__L__yhat(yhat, y, grad__L__yhat)
 
@@ -230,15 +232,15 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
                 grad__L__z = self.estimate_grad__L__z(z[:-1], W[:, :-1], y, grad__L__z)
 
             # Update V
-            grad__L__V = nans_like(V)
             for h in range(H):
                 grad__z_h__V_h = x * (1 - z[h] ** 2)
                 if USE_NUMERICAL_DERIVATIVES:
                     grad__z_h__V_h = self.estimate_grad__z_h__V_h(h, x, self.V, grad__z_h__V_h)
 
-                grad__L__V[h, :] = grad__L__z[h] * grad__z_h__V_h
+                grad__L__V_h = grad__L__z[h] * grad__z_h__V_h
+
                 if USE_NUMERICAL_DERIVATIVES:
-                    grad__L__V[h, :] = self.estimate_grad__L__V_h(h, x, V, W, y, grad__L__V[h, :])
+                    grad__L__V_h = self.estimate_grad__L__V_h(h, x, V, W, y, grad__L__V_h)
 
                 if DEBUG:
                     loss_before = self.compute_loss(X[:, :-1], Y)
@@ -246,7 +248,7 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
                     if not (loss_after <= loss_before):
                         stderr.write('Loss did not decrease for V\n')
 
-                V[h, :] -= self.learning_rate * grad__L__V[h, :]
+                V[h, :] -= self.learning_rate * grad__L__V_h
 
             z, yhat = self.forward(x, V, W)
 
