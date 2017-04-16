@@ -3,6 +3,7 @@ import sys
 import re
 from collections import Counter
 from functools import partial
+from functools import reduce
 from random import shuffle
 from sys import stderr
 
@@ -184,7 +185,14 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
             if it % 10000 == 0:
                 print('%6d/%-6d %.3f' % (it, self.n_iterations, self.loss(X, V, W, Y)))
 
-            grad__L__V, grad__L__W = self.gradient(it, sample_indices, X, V, W, Y)
+            gradients = map(
+                partial(self.gradient, sample_indices=sample_indices, X=X, V=V, W=W, Y=Y),
+                range(it, it + self.batch_size),
+            )
+            grad__L__V, grad__L__W = [
+                reduce(np.add, grads)
+                for grads in zip(*gradients)
+            ]
             W -= self.learning_rate * grad__L__W
             V -= self.learning_rate * grad__L__V
 
