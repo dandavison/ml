@@ -221,12 +221,11 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
                     loss_after = self.compute_loss(X[:, :-1], Y)
                     if not (loss_after <= loss_before):
                         stderr.write('Loss did not decrease for W\n')
+                W[k, :] -= self.learning_rate * grad__L__yhat[k] * grad__yhat_k__W[k, :]
+
 
             if USE_NUMERICAL_DERIVATIVES:
                 grad__L__z = self.estimate_grad__L__z(z[:-1], W[:, :-1], y, grad__L__z)
-
-            for k in range(K):
-                W[k, :] -= self.learning_rate * grad__L__yhat[k] * grad__yhat_k__W[k, :]
 
             # Update V
             grad__L__V = nans_like(V)
@@ -245,7 +244,6 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
                     if not (loss_after <= loss_before):
                         stderr.write('Loss did not decrease for V\n')
 
-            for h in range(H):
                 V[h, :] -= self.learning_rate * grad__L__V[h, :]
 
             z, yhat = self.forward(x, V, W)
