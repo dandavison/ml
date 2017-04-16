@@ -109,6 +109,11 @@ def random_uniform(low, high, shape):
             .reshape(shape))
 
 
+def random_normal(loc, scale, shape):
+    return (np.random.normal(loc, scale, size=np.prod(shape))
+            .reshape(shape))
+
+
 def random_partition(X, y, n):
     """
     Split into n rows and remaining rows, after shuffling.

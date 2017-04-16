@@ -19,7 +19,7 @@ from ml.utils import logistic
 from ml.utils import memoized
 from ml.utils import nans_like
 from ml.utils import one_hot_encode_array
-from ml.utils import random_uniform
+from ml.utils import random_normal
 
 from clint.textui.colored import red, blue, green
 red = partial(red, bold=True)
@@ -151,9 +151,9 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
         d -= 1
 
         if self.V is None:
-            self.V = random_uniform(-1, 1, (H + 1, d + 1))
+            self.V = random_normal(0, 0.1, (H + 1, d + 1))
         if self.W is None:
-            self.W = random_uniform(-1, 1, (K, H + 1))
+            self.W = random_normal(0, 0.1, (K, H + 1))
         V, W = self.V, self.W
 
         Yhat = self.predict(X[:, :-1])

@@ -94,7 +94,7 @@ class TestNeuralNetwork(TestCase):
         _, Y = net.prepare_data(X, y)
         self.assertEqual(
             net.loss(Yhat, Y),
-            1.3726054095703635,
+            1.7538333305760909,
         )
         # ~ 0.5s
 
