@@ -343,8 +343,11 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
 
         log_Yhat[Y == 0] = 0
         log_Yhat_inv[Y == 1] = 0
-        assert (np.isfinite(log_Yhat).all() and
-                np.isfinite(log_Yhat_inv).all())
+        if not (np.isfinite(log_Yhat).all() and
+                np.isfinite(log_Yhat_inv).all()):
+            stderr.write('parameters incompatible with data '
+                         '(log() arising in loss calculation).\n')
+            stderr.flush()
 
         log_Yhat[~np.isfinite(log_Yhat)] = log(EPSILON)
         log_Yhat_inv[~np.isfinite(log_Yhat_inv)] = log(EPSILON)
