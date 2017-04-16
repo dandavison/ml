@@ -115,17 +115,14 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
 
     def predict(self, X):
         X = self.prepare_data(X)
-        Z = tanh(self.V @ X.T)
-        Z[-1, :] = 1
-        Yhat = logistic(self.W @ Z).T
+        Z, Yhat = self.forward(X, self.V, self.W)
         return Yhat
 
-    def forward(self, x, V, W):
-        # TODO combine with predict()
-        z = tanh(V @ x)
-        z[-1] = 1  # The last row of V is unused; z[-1] must always be 1, just as x[-1].
-        yhat = logistic(W @ z)
-        return z, yhat
+    def forward(self, X, V, W):
+        Z = tanh(V @ X.T)
+        Z[-1, :] = 1  # The last row of V is unused; z[-1] must always be 1, just as x[-1].
+        Yhat = logistic(self.W @ Z).T
+        return Z, Yhat
 
     def fit(self, X, y):
         """
@@ -174,9 +171,10 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
 
             i = sample_indices[it % n]
 
-            x = X[i, :]
+            x = X[[i], :]
             y = Y[i, :]
             z, yhat = self.forward(x, V, W)
+            z = z.ravel()
 
             yhat = Yhat[i, :]
 
