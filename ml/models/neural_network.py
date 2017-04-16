@@ -87,7 +87,7 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
     | Loss                 | L            | scalar |
 
     The loss function is the cross-entropy
-    sum_k { y_k log(yhat_k) + (1 - y_k) log(1 - yhat_k) }
+    -sum_k { y_k log(yhat_k) + (1 - y_k) log(1 - yhat_k) }
     """
 
     def __init__(self, n_hidden_units):
@@ -181,7 +181,7 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
 
             L_i_before = self.loss(yhat, y)
 
-            grad__L__yhat = (y - yhat) / np.clip((yhat * (1 - yhat)), EPSILON, inf)
+            grad__L__yhat = (yhat - y) / np.clip((yhat * (1 - yhat)), EPSILON, inf)
             if USE_NUMERICAL_DERIVATIVES:
                 grad__L__yhat = self.estimate_grad__L__yhat(yhat, y, grad__L__yhat)
 
