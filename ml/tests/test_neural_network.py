@@ -74,13 +74,13 @@ class TestNeuralNetwork(TestCase):
         learning_rate = 0.1
         n_iterations = 100
 
-        net = SingleLayerTanhLogisticNeuralNetwork(n_hidden_units=1)
-        net.fit(
-            X, y,
+        net = SingleLayerTanhLogisticNeuralNetwork(
+            n_hidden_units=1,
             learning_rate=learning_rate,
             outfile=stdout,
             n_iterations=n_iterations,
         )
+        net.fit(X, y)
         print(net.predict(X))
         print(np.argmax(net.predict(X), axis=1))
 

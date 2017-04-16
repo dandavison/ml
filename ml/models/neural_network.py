@@ -91,11 +91,22 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
     -sum_k { y_k log(yhat_k) + (1 - y_k) log(1 - yhat_k) }
     """
 
-    def __init__(self, n_hidden_units):
+    def __init__(self,
+                 n_hidden_units,
+                 learning_rate,
+                 n_iterations=None,
+                 stop_factor=None,
+                 stop_window_size=100,
+                 outfile=None):
         self.H = n_hidden_units
         self.K = None  # Determined empirically as distinct training labels
         self.V = None
         self.W = None
+        self.learning_rate = learning_rate
+        self.n_iterations = n_iterations
+        self.stop_factor = stop_factor
+        self.stop_window_size = stop_window_size
+        self.outfile = outfile
 
     def predict(self, X):
         X = self.prepare_data(X)
@@ -111,12 +122,7 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
         yhat = logistic(W @ z)
         return z, yhat
 
-    def fit(self, X, y,
-            learning_rate=1e-3,
-            n_iterations=None,
-            stop_factor=None,
-            stop_window_size=100,
-            outfile=None):
+    def fit(self, X, y):
         """
         \grad_{W_k} L = \partiald{L}{\yhat_k} \grad_{W_k} \yhat_k
             \partiald{L}{\yhat_k} = \frac{y_k - \yhat_k}{\yhat_k (1 - \yhat_k)}
@@ -128,7 +134,7 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
         \grad_{V_h} L = \partiald{L}{z_h} \grad_{V_h} z_h
             \grad_{V_h} z_h = x(1 - z_h^2)
         """
-        assert stop_factor or n_iterations is not None
+        assert self.stop_factor or self.n_iterations is not None
 
         X, Y = self.prepare_data(X, y)
         H = self.H
@@ -161,16 +167,16 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
             ]
             print('\n'.join(lines) + '\n\n')
 
-        delta_L_window = np.zeros(stop_window_size)
+        delta_L_window = np.zeros(self.stop_window_size)
         it = 0
         while True:
             if not QUIET:
                 if it % 100 == 0:
-                    print(it)
+                    print('%d %f' % (it, L))
 
-            if n_iterations is not None and it == n_iterations:
+            if self.n_iterations is not None and it == self.n_iterations:
                 break
-            elif stop_factor and it and abs(delta_L_window[:it].mean()) < stop_factor:
+            elif (self.stop_factor and it and abs(delta_L_window[:it].mean()) < self.stop_factor):
                 break
 
             i, = sample(range(n), 1)
@@ -212,7 +218,7 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
                 grad__L__z = self.estimate_grad__L__z(z[:-1], W[:, :-1], y, grad__L__z)
 
             for k in range(K):
-                W[k, :] -= learning_rate * grad__L__yhat[k] * grad__yhat_k__W[k, :]
+                W[k, :] -= self.learning_rate * grad__L__yhat[k] * grad__yhat_k__W[k, :]
 
             # Update V
             grad__L__V = nans_like(V)
@@ -232,7 +238,7 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
                         stderr.write('Loss did not decrease for V\n')
 
             for h in range(H):
-                V[h, :] -= learning_rate * grad__L__V[h, :]
+                V[h, :] -= self.learning_rate * grad__L__V[h, :]
 
             z, yhat = self.forward(x, V, W)
 
@@ -242,17 +248,20 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
             L_i_after = self.loss(yhat, y)
             assert np.isfinite(L_i_after)
             delta_L = L_i_after - L_i_before
-            if not delta_L < 1e-3:
-                stderr.write("Δ L = %.2f\n" % delta_L)
-            delta_L_window[it % stop_window_size] = delta_L
+            delta_L_window[it % self.stop_window_size] = delta_L
             L += delta_L
 
-            if outfile:
-                outfile.write('%d %f\n' % (it, L))
+            if not delta_L < 1e-3:
+                stderr.write("L, Δ L = %.2f, %.2f\n" % (L, delta_L))
+
+            if self.outfile:
+                self.outfile.write('%d %f\n' % (it, L))
 
             it += 1
 
         self.locals = locals()
+
+        return self
 
     def estimate_grad__z_h__V_h(self, h, x, V, grad):
         eps = EPSILON_FINITE_DIFFERENCE
