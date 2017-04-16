@@ -26,6 +26,7 @@ blue = partial(blue, bold=True)
 green = partial(green, bold=True)
 COLOURS = cyclic([green, blue, red])
 DEBUG = False
+QUIET = False
 USE_NUMERICAL_DERIVATIVES = False
 
 
@@ -163,8 +164,9 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
         delta_L_window = np.zeros(stop_window_size)
         it = 0
         while True:
-            if DEBUG:
-                print('%d --------------------------------------' % it)
+            if not QUIET:
+                if it % 100 == 0:
+                    print(it)
 
             if n_iterations is not None and it == n_iterations:
                 break
@@ -223,10 +225,11 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
                 if USE_NUMERICAL_DERIVATIVES:
                     grad__L__V[h, :] = self.estimate_grad__L__V_h(h, x, V, W, y, grad__L__V[h, :])
 
-                loss_before = self.compute_loss(X[:, :-1], Y)
-                loss_after = self.compute_loss(X[:, :-1], Y)
-                if not (loss_after <= loss_before):
-                    stderr.write('Loss did not decrease for V\n')
+                if DEBUG:
+                    loss_before = self.compute_loss(X[:, :-1], Y)
+                    loss_after = self.compute_loss(X[:, :-1], Y)
+                    if not (loss_after <= loss_before):
+                        stderr.write('Loss did not decrease for V\n')
 
             for h in range(H):
                 V[h, :] -= learning_rate * grad__L__V[h, :]
