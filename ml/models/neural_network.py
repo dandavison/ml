@@ -180,9 +180,8 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
 
             yhat = Yhat[i, :]
 
-            grad__L__yhat = (yhat - y) / np.clip(yhat * (1 - yhat), EPSILON, inf)
-
             # Update W
+            # grad__L__yhat = (yhat - y) / np.clip(yhat * (1 - yhat), EPSILON, inf)
             # grad__L__z[:] = 0.0
             # for k in range(K):
             #     grad__yhat_k__W_k = z * yhat[k] * (1 - yhat[k])
