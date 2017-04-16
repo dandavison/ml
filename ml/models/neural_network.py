@@ -181,13 +181,7 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
         while True:
             it += 1
 
-            if not QUIET:
-                if it % 100 == 0:
-                    print('%d %f' % (it, L))
-
-            if self.n_iterations is not None and it == self.n_iterations:
-                break
-            elif (self.stop_factor and it and abs(delta_L_window[:it].mean()) < self.stop_factor):
+            if it >= self.n_iterations:
                 break
 
             i = sample_indices[it % n]
@@ -198,79 +192,28 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
             yhat = Yhat[i, :]
             y = Y[i, :]
 
-            if DEBUG:
-                L_i_before = self.loss(yhat, y)
-
             grad__L__yhat = (yhat - y) / (yhat * (1 - yhat))  # np.clip((.), EPSILON, inf)
-            if USE_NUMERICAL_DERIVATIVES:
-                grad__L__yhat = self.estimate_grad__L__yhat(yhat, y, grad__L__yhat)
 
             # Update W
             grad__L__z[:] = 0.0
             for k in range(K):
                 grad__yhat_k__W_k = z * yhat[k] * (1 - yhat[k])
-                if USE_NUMERICAL_DERIVATIVES:
-                    grad__yhat_k__W_k = self.estimate_grad__yhat_k__W_k(k, z, W, y, grad__yhat_k__W_k)
-
                 # Last element corresponds to constant offset 1 appended to z
                 # vector; it does not change / has no derivative.
                 grad__yhat_k__z = W[k, :-1] * yhat[k] * (1 - yhat[k])
-                if USE_NUMERICAL_DERIVATIVES:
-                    grad__yhat_k__z = self.estimate_grad__yhat_k__z(k, z[:-1], W[:, :-1], y, grad__yhat_k__z)
-
                 grad__L__z += grad__L__yhat[k] * grad__yhat_k__z
-
-                if DEBUG:
-                    loss_before = self.compute_loss(X[:, :-1], Y)
-                    loss_after = self.compute_loss(X[:, :-1], Y)
-                    if not (loss_after <= loss_before):
-                        stderr.write('Loss did not decrease for W\n')
                 W[k, :] -= self.learning_rate * grad__L__yhat[k] * grad__yhat_k__W_k
 
-
-            if USE_NUMERICAL_DERIVATIVES:
-                grad__L__z = self.estimate_grad__L__z(z[:-1], W[:, :-1], y, grad__L__z)
 
             # Update V
             for h in range(H):
                 grad__z_h__V_h = x * (1 - z[h] ** 2)
-                if USE_NUMERICAL_DERIVATIVES:
-                    grad__z_h__V_h = self.estimate_grad__z_h__V_h(h, x, self.V, grad__z_h__V_h)
-
                 grad__L__V_h = grad__L__z[h] * grad__z_h__V_h
-
-                if USE_NUMERICAL_DERIVATIVES:
-                    grad__L__V_h = self.estimate_grad__L__V_h(h, x, V, W, y, grad__L__V_h)
-
-                if DEBUG:
-                    loss_before = self.compute_loss(X[:, :-1], Y)
-                    loss_after = self.compute_loss(X[:, :-1], Y)
-                    if not (loss_after <= loss_before):
-                        stderr.write('Loss did not decrease for V\n')
-
                 V[h, :] -= self.learning_rate * grad__L__V_h
 
             z, yhat = self.forward(x, V, W)
 
-            assert np.isfinite(yhat).all()
-
             Yhat[i, :] = yhat
-
-            if self.outfile:
-                self.outfile.write('%d %f\n' % (it, L))
-
-            if DEBUG:
-                L_i_after = self.loss(yhat, y)
-                assert np.isfinite(L_i_after)
-                delta_L = L_i_after - L_i_before
-                delta_L_window[it % self.stop_window_size] = delta_L
-                L += delta_L
-
-                if not delta_L < 1e-3:
-                    print("L, Δ L = %.2f, %.2f\n" % (L, delta_L))
-
-                self.locals = locals()
-
 
         return self
 
