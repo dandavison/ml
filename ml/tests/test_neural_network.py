@@ -75,7 +75,9 @@ class TestNeuralNetwork(TestCase):
         learning_rate = 0.01
         n_iterations = 1000
 
-        random.seed(0)
+        rng_seed = 0
+        random.seed(rng_seed)
+        np.random.seed(rng_seed)
 
         net = SingleLayerTanhLogisticNeuralNetwork(
             n_hidden_units=1,
@@ -88,6 +90,13 @@ class TestNeuralNetwork(TestCase):
             np.argmax(net.predict(X), axis=1) + 1,
             y,
         )
+        Yhat = net.predict(X)
+        _, Y = net.prepare_data(X, y)
+        self.assertEqual(
+            net.loss(Yhat, Y),
+            1.3788977019991231,
+        )
+
         if False:
             sk_net = SKLearnNeuralNet(
                 learning_rate_init=learning_rate,
