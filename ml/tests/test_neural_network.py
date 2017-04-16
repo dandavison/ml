@@ -81,8 +81,8 @@ class TestNeuralNetwork(TestCase):
             outfile=stdout,
             n_iterations=n_iterations,
         )
-        # print(np.argmax(net.predict(X), axis=1))
         print(net.predict(X))
+        print(np.argmax(net.predict(X), axis=1))
 
         sk_net = SKLearnNeuralNet(
             learning_rate_init=learning_rate,
