@@ -1,4 +1,5 @@
 from __future__ import print_function
+import itertools
 import sys
 import re
 from collections import Counter
@@ -182,9 +183,9 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
 
         if self.parallel:
             pool = Pool()
-            map_fn = pool.map
+            starmap = pool.starmap
         else:
-            map_fn = map
+            starmap = itertools.starmap
 
         it = -self.batch_size
         while True:
@@ -194,9 +195,13 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
             if it % 10000 == 0:
                 print('%6d/%-6d %.3f' % (it, self.n_iterations, self.loss(X, V, W, Y)))
 
-            gradients = map_fn(
-                partial(self.gradient, sample_indices=sample_indices, X=X, V=V, W=W, Y=Y),
-                range(it, it + self.batch_size),
+            def args(it):
+                i = sample_indices[it % n]
+                return (X[[i], :], V, W, Y[i, :])
+
+            gradients = starmap(
+                self.gradient,
+                map(args, range(it, it + self.batch_size))
             )
             grad__L__V, grad__L__W = [
                 reduce(np.add, grads)
@@ -207,22 +212,21 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
 
         return self
 
-    def gradient(self, it, sample_indices, X, V, W, Y):
+    def gradient(self, X, V, W, Y):
         """
         Compute gradient of loss with respect to V and W.
         """
-        n, d_plus_one = X.shape
+        one, d_plus_one = X.shape
         K, H_plus_one = W.shape
         d = d_plus_one - 1
         H = H_plus_one - 1
 
-        i = sample_indices[it % n]
-
-        x = X[[i], :]
-        y = Y[i, :]
-        z, yhat = self.forward(x, V, W)
-        z = z.ravel()
-        yhat = yhat.ravel()
+        Z, Yhat = self.forward(X, V, W)
+        assert one == 1
+        x = X
+        y = Y
+        z = Z.ravel()
+        yhat = Yhat.ravel()
 
         # Update W
         # grad__L__yhat = (yhat - y) / np.clip(yhat * (1 - yhat), EPSILON, inf)
