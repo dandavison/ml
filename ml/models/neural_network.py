@@ -124,6 +124,23 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
         Yhat = logistic(self.W @ Z).T
         return Z, Yhat
 
+    def loss(self, Yhat, Y):
+        log_Yhat = log(Yhat)
+        log_Yhat_inv = log(1 - Yhat)
+
+        log_Yhat[Y == 0] = 0
+        log_Yhat_inv[Y == 1] = 0
+        if not (np.isfinite(log_Yhat).all() and
+                np.isfinite(log_Yhat_inv).all()):
+            stderr.write('parameters incompatible with data '
+                         '(log() arising in loss calculation).\n')
+            stderr.flush()
+
+        log_Yhat[~np.isfinite(log_Yhat)] = log(EPSILON)
+        log_Yhat_inv[~np.isfinite(log_Yhat_inv)] = log(EPSILON)
+
+        return -(Y * log_Yhat + (1 - Y) * log_Yhat_inv).sum()
+
     def fit(self, X, y):
         """
         \grad_{W_k} L = \partiald{L}{\yhat_k} \grad_{W_k} \yhat_k
@@ -316,27 +333,6 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
             print(col('%s = %s' % (label, grad__n)))
             print(col(', '.join('%.9f' % g for g in describe(grad__n - grad).minmax)))
         return grad__n
-
-    def compute_loss(self, X, Y):
-        Yhat = self.predict(X)
-        return self.loss(Yhat, Y)
-
-    def loss(self, Yhat, Y):
-        log_Yhat = log(Yhat)
-        log_Yhat_inv = log(1 - Yhat)
-
-        log_Yhat[Y == 0] = 0
-        log_Yhat_inv[Y == 1] = 0
-        if not (np.isfinite(log_Yhat).all() and
-                np.isfinite(log_Yhat_inv).all()):
-            stderr.write('parameters incompatible with data '
-                         '(log() arising in loss calculation).\n')
-            stderr.flush()
-
-        log_Yhat[~np.isfinite(log_Yhat)] = log(EPSILON)
-        log_Yhat_inv[~np.isfinite(log_Yhat_inv)] = log(EPSILON)
-
-        return -(Y * log_Yhat + (1 - Y) * log_Yhat_inv).sum()
 
     def prepare_data(self, X, y=None):
         n, d = X.shape
