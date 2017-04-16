@@ -171,6 +171,9 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
             ]
             print('\n'.join(lines) + '\n\n')
 
+        # Allocate
+        grad__L__z = np.zeros((H,))
+
         delta_L_window = np.zeros(self.stop_window_size)
         it = -1
         while True:
@@ -201,12 +204,11 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
                 grad__L__yhat = self.estimate_grad__L__yhat(yhat, y, grad__L__yhat)
 
             # Update W
-            grad__L__z = np.zeros_like(z[:-1])
-            grad__yhat_k__W = nans_like(W)
+            grad__L__z[:] = 0.0
             for k in range(K):
-                grad__yhat_k__W[k, :] = z * yhat[k] * (1 - yhat[k])
+                grad__yhat_k__W_k = z * yhat[k] * (1 - yhat[k])
                 if USE_NUMERICAL_DERIVATIVES:
-                    grad__yhat_k__W[k, :] = self.estimate_grad__yhat_k__W_k(k, z, W, y, grad__yhat_k__W[k, :])
+                    grad__yhat_k__W_k = self.estimate_grad__yhat_k__W_k(k, z, W, y, grad__yhat_k__W_k)
 
                 # Last element corresponds to constant offset 1 appended to z
                 # vector; it does not change / has no derivative.
@@ -221,7 +223,7 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
                     loss_after = self.compute_loss(X[:, :-1], Y)
                     if not (loss_after <= loss_before):
                         stderr.write('Loss did not decrease for W\n')
-                W[k, :] -= self.learning_rate * grad__L__yhat[k] * grad__yhat_k__W[k, :]
+                W[k, :] -= self.learning_rate * grad__L__yhat[k] * grad__yhat_k__W_k
 
 
             if USE_NUMERICAL_DERIVATIVES:
