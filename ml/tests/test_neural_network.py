@@ -88,6 +88,7 @@ class TestNeuralNetwork(TestCase):
         net = SingleLayerTanhLogisticNeuralNetwork(
             n_hidden_units=n_hidden_units,
             learning_rate=learning_rate,
+            batch_size=1,
             outfile=None,
             n_iterations=n_iterations,
         )

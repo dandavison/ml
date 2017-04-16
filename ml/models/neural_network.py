@@ -96,6 +96,7 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
                  n_hidden_units,
                  learning_rate,
                  n_iterations=None,
+                 batch_size=1,
                  stop_factor=None,
                  stop_window_size=None,
                  outfile=None):
@@ -109,6 +110,7 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
         self.W = None
         self.learning_rate = learning_rate
         self.n_iterations = n_iterations
+        self.batch_size = batch_size
         self.stop_factor = stop_factor
         self.stop_window_size = stop_window_size
         self.outfile = outfile
@@ -171,54 +173,63 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
             self.W = random_normal(0, 0.1, (K, H + 1))
         V, W = self.V, self.W
 
-        # Allocate
-        grad__L__z = np.zeros((H,))
         sample_indices = list(range(n))
         shuffle(sample_indices)
 
-        delta_L_window = np.zeros(self.stop_window_size)
-        it = -1
+        it = -self.batch_size
         while True:
-            it += 1
-
+            it += self.batch_size
             if it >= self.n_iterations:
                 break
             if it % 10000 == 0:
                 print('%6d/%-6d %.3f' % (it, self.n_iterations, self.loss(X, V, W, Y)))
 
-            i = sample_indices[it % n]
-
-            x = X[[i], :]
-            y = Y[i, :]
-            z, yhat = self.forward(x, V, W)
-            z = z.ravel()
-            yhat = yhat.ravel()
-
-            # Update W
-            # grad__L__yhat = (yhat - y) / np.clip(yhat * (1 - yhat), EPSILON, inf)
-            # grad__L__z[:] = 0.0
-            # for k in range(K):
-            #     grad__yhat_k__W_k = z * yhat[k] * (1 - yhat[k])
-            #     # Last element corresponds to constant offset 1 appended to z
-            #     # vector; it does not change / has no derivative.
-            #     grad__yhat_k__z = W[k, :-1] * yhat[k] * (1 - yhat[k])
-            #     grad__L__z += grad__L__yhat[k] * grad__yhat_k__z
-            #     W[k, :] -= self.learning_rate * grad__L__yhat[k] * grad__yhat_k__W_k
-            grad__L__z = (W.T * (yhat - y)).sum(axis=1)
-            zz = z.reshape((1, H + 1)).repeat(K, 0)
-            grad__L__W = diag(yhat - y) @ zz
+            grad__L__V, grad__L__W = self.gradient(it, sample_indices, X, V, W, Y)
             W -= self.learning_rate * grad__L__W
-
-            # Update V
-            # for h in range(H):
-            #     grad__z_h__V_h = x * (1 - z[h] ** 2)
-            #     grad__L__V_h = grad__L__z[h] * grad__z_h__V_h
-            #     V[h, :] -= self.learning_rate * grad__L__V_h
-            xx = x.reshape((1, d + 1)).repeat(H + 1, 0)
-            grad__L__V = diag((1 - z ** 2) * grad__L__z) @ xx
             V -= self.learning_rate * grad__L__V
 
         return self
+
+    def gradient(self, it, sample_indices, X, V, W, Y):
+        """
+        Compute gradient of loss with respect to V and W.
+        """
+        n, d_plus_one = X.shape
+        K, H_plus_one = W.shape
+        d = d_plus_one - 1
+        H = H_plus_one - 1
+
+        i = sample_indices[it % n]
+
+        x = X[[i], :]
+        y = Y[i, :]
+        z, yhat = self.forward(x, V, W)
+        z = z.ravel()
+        yhat = yhat.ravel()
+
+        # Update W
+        # grad__L__yhat = (yhat - y) / np.clip(yhat * (1 - yhat), EPSILON, inf)
+        # grad__L__z[:] = 0.0
+        # for k in range(K):
+        #     grad__yhat_k__W_k = z * yhat[k] * (1 - yhat[k])
+        #     # Last element corresponds to constant offset 1 appended to z
+        #     # vector; it does not change / has no derivative.
+        #     grad__yhat_k__z = W[k, :-1] * yhat[k] * (1 - yhat[k])
+        #     grad__L__z += grad__L__yhat[k] * grad__yhat_k__z
+        #     W[k, :] -= self.learning_rate * grad__L__yhat[k] * grad__yhat_k__W_k
+        grad__L__z = (W.T * (yhat - y)).sum(axis=1)
+        zz = z.reshape((1, H + 1)).repeat(K, 0)
+        grad__L__W = diag(yhat - y) @ zz
+
+        # Update V
+        # for h in range(H):
+        #     grad__z_h__V_h = x * (1 - z[h] ** 2)
+        #     grad__L__V_h = grad__L__z[h] * grad__z_h__V_h
+        #     V[h, :] -= self.learning_rate * grad__L__V_h
+        xx = x.reshape((1, d + 1)).repeat(H + 1, 0)
+        grad__L__V = diag((1 - z ** 2) * grad__L__z) @ xx
+
+        return grad__L__V, grad__L__W
 
     def estimate_grad__z_h__V_h(self, h, x, V, grad):
         eps = EPSILON_FINITE_DIFFERENCE
