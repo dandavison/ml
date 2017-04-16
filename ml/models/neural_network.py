@@ -184,6 +184,8 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
 
             if it >= self.n_iterations:
                 break
+            if it % 10000 == 0:
+                print('%6d/%-6d %.3f' % (it, self.n_iterations, self.loss(Yhat, Y)))
 
             i = sample_indices[it % n]
 
