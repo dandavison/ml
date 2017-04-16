@@ -60,10 +60,13 @@ class TestNeuralNetwork(TestCase):
             array([0, 0]),
         )
 
-    def test_2(self):
-        self._do_test_2(n_hidden_units=1)
+    def test_2_1(self):
+        self._do_test_2(1, 1.7538333305760909)
 
-    def _do_test_2(self, n_hidden_units):
+    def test_2_2(self):
+        self._do_test_2(2, 0.9008814141831486)
+
+    def _do_test_2(self, n_hidden_units, expected_loss):
         Xy = array([
             [-1,   -1, 1],
             [ 0,    0, 1],
@@ -89,15 +92,16 @@ class TestNeuralNetwork(TestCase):
             n_iterations=n_iterations,
         )
         net.fit(X, y)
+        Yhat = net.predict(X)
+        yhat = np.argmax(Yhat, axis=1) + 1
         self.assertEqualArrays(
-            np.argmax(net.predict(X), axis=1) + 1,
+            yhat,
             y,
         )
-        Yhat = net.predict(X)
         _, Y = net.prepare_data(X, y)
         self.assertEqual(
             net.loss(Yhat, Y),
-            1.7538333305760909,
+            expected_loss,
         )
         # ~ 0.5s
 
@@ -127,4 +131,5 @@ class SKLearnNeuralNet(MLPClassifier):
 
 
 if __name__ == '__main__':
-    TestNeuralNetwork().test_2()
+    TestNeuralNetwork().test_2_1()
+    TestNeuralNetwork().test_2_2()
