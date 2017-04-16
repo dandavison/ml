@@ -13,6 +13,8 @@ from numpy import tanh
 from scipy.stats import describe
 
 from ml.models.base import Classifier
+from ml.utils import center
+from ml.utils import contrast_normalize
 from ml.utils import cyclic
 from ml.utils import log
 from ml.utils import logistic
@@ -357,6 +359,8 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
         return -(Y * log_Yhat + (1 - Y) * log_Yhat_inv).sum()
 
     def prepare_data(self, X, y=None):
+        X = contrast_normalize(center(X))
+
         n, d = X.shape
         X = np.hstack([X, np.ones((n, 1))])
         if y is None:
