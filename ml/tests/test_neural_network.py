@@ -96,6 +96,7 @@ class TestNeuralNetwork(TestCase):
             net.loss(Yhat, Y),
             1.3788977019991231,
         )
+        # ~ 0.7s - 0.8s
 
         if False:
             sk_net = SKLearnNeuralNet(
