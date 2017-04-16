@@ -4,6 +4,7 @@ import re
 from collections import Counter
 from functools import partial
 from functools import reduce
+from multiprocessing import Pool
 from random import shuffle
 from sys import stderr
 
@@ -98,6 +99,7 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
                  learning_rate,
                  n_iterations=None,
                  batch_size=1,
+                 parallel=False,
                  stop_factor=None,
                  stop_window_size=None,
                  outfile=None):
@@ -112,6 +114,7 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
         self.learning_rate = learning_rate
         self.n_iterations = n_iterations
         self.batch_size = batch_size
+        self.parallel = parallel
         self.stop_factor = stop_factor
         self.stop_window_size = stop_window_size
         self.outfile = outfile
@@ -177,6 +180,12 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
         sample_indices = list(range(n))
         shuffle(sample_indices)
 
+        if self.parallel:
+            pool = Pool()
+            map_fn = pool.map
+        else:
+            map_fn = map
+
         it = -self.batch_size
         while True:
             it += self.batch_size
@@ -185,7 +194,7 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
             if it % 10000 == 0:
                 print('%6d/%-6d %.3f' % (it, self.n_iterations, self.loss(X, V, W, Y)))
 
-            gradients = map(
+            gradients = map_fn(
                 partial(self.gradient, sample_indices=sample_indices, X=X, V=V, W=W, Y=Y),
                 range(it, it + self.batch_size),
             )
