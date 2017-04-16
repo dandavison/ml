@@ -4,6 +4,7 @@ import re
 from collections import Counter
 from functools import partial
 from random import sample
+from sys import stderr
 
 import numpy as np
 from numpy import inf
@@ -24,7 +25,7 @@ red = partial(red, bold=True)
 blue = partial(blue, bold=True)
 green = partial(green, bold=True)
 COLOURS = cyclic([green, blue, red])
-
+DEBUG = False
 
 @memoized
 def get_colour(key):
@@ -144,22 +145,24 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
         Yhat = self.predict(X[:, :-1])
 
         L = self.loss(Yhat, Y)
-        lines = [
-            str(X),
-            str(Y),
-            'X: %d x %d' % X.shape,
-            'Y: %d x %d' % Y.shape,
-            'H = %d' % H,
-            'K = %d' % K,
-            'L = %.2f\n' % L,
-        ]
-        sys.stdout.write('\n'.join(lines) + '\n\n')
-        sys.stdout.flush()
+
+        if DEBUG:
+            lines = [
+                str(X),
+                str(Y),
+                'X: %d x %d' % X.shape,
+                'Y: %d x %d' % Y.shape,
+                'H = %d' % H,
+                'K = %d' % K,
+                'L = %.2f\n' % L,
+            ]
+            print('\n'.join(lines) + '\n\n')
 
         delta_L_window = np.zeros(stop_window_size)
         it = 0
         while True:
-            print('%d --------------------------------------' % it)
+            if DEBUG:
+                print('%d --------------------------------------' % it)
 
             if n_iterations is not None and it == n_iterations:
                 break
@@ -173,9 +176,6 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
             z[-1] = 1  # The last row of V is unused; z[-1] must always be 1, just as x[-1].
             yhat = Yhat[i, :]
             y = Y[i, :]
-
-            if outfile:
-                self.log_state(locals())
 
             L_i_before = self.loss(yhat, y)
 
@@ -200,7 +200,7 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
                 loss_before = self.compute_loss(X[:, :-1], Y)
                 loss_after = self.compute_loss(X[:, :-1], Y)
                 if not (loss_after <= loss_before):
-                    sys.stderr.write('Loss did not decrease for W\n')
+                    stderr.write('Loss did not decrease for W\n')
 
             for k in range(K):
                 W[k, :] -= learning_rate * grad__L__yhat[k] * grad__yhat_k__W[k, :]
@@ -219,7 +219,7 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
                 loss_before = self.compute_loss(X[:, :-1], Y)
                 loss_after = self.compute_loss(X[:, :-1], Y)
                 if not (loss_after <= loss_before):
-                    sys.stderr.write('Loss did not decrease for V\n')
+                    stderr.write('Loss did not decrease for V\n')
 
             for h in range(H):
                 V[h, :] -= learning_rate * grad__L__V[h, :]
@@ -233,12 +233,12 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
             assert np.isfinite(L_i_after)
             delta_L = L_i_after - L_i_before
             if not delta_L < 1e-3:
-                sys.stderr.write("Δ L = %.2f\n" % delta_L)
+                stderr.write("Δ L = %.2f\n" % delta_L)
             delta_L_window[it % stop_window_size] = delta_L
             L += delta_L
 
             if outfile:
-                self.log_state(locals())
+                outfile.write('%d %f\n' % (it, L))
 
             it += 1
 
@@ -347,9 +347,10 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
     @staticmethod
     def _do_finite_difference_estimate(d, wrt, label, grad):
         grad__n = np.array(list(map(d, range(len(wrt)))))
-        col = get_colour(re.subn(r'\d+', '%d', label))
-        print(col('%s = %s' % (label, grad__n)))
-        print(col(', '.join('%.9f' % g for g in describe(grad__n - grad).minmax)))
+        if DEBUG:
+            col = get_colour(re.subn(r'\d+', '%d', label))
+            print(col('%s = %s' % (label, grad__n)))
+            print(col(', '.join('%.9f' % g for g in describe(grad__n - grad).minmax)))
         return grad__n
 
     def compute_loss(self, X, Y):
@@ -391,21 +392,6 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
         self.K = K
         Y = one_hot_encode_array(y)
         return X, Y
-
-    @staticmethod
-    def log_state(state):
-        locals().update(state)
-        lines = [
-            'i = %d' % i,
-            'x = %s' % x,
-            'V = \n%s' % V,
-            'z = %s' % z,
-            'W = \n%s' % W,
-            'yhat = %s' % yhat,
-            'y = %s' % y,
-        ]
-        outfile.write('\n'.join(lines) + '\n\n')
-        outfile.flush()
 
 
 class Layer:

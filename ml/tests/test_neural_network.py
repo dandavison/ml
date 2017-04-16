@@ -1,4 +1,4 @@
-import sys
+from sys import stdout
 
 import numpy as np
 from numpy import array
@@ -78,7 +78,7 @@ class TestNeuralNetwork(TestCase):
         net.fit(
             X, y,
             learning_rate=learning_rate,
-            outfile=None,
+            outfile=stdout,
             n_iterations=n_iterations,
         )
         # print(np.argmax(net.predict(X), axis=1))
