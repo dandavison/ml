@@ -1,3 +1,4 @@
+import random
 from sys import stdout
 
 import numpy as np
@@ -71,8 +72,10 @@ class TestNeuralNetwork(TestCase):
         X = Xy[:, :-1]
         y = Xy[:, -1]
 
-        learning_rate = 0.1
-        n_iterations = 100
+        learning_rate = 0.01
+        n_iterations = 1000
+
+        random.seed(0)
 
         net = SingleLayerTanhLogisticNeuralNetwork(
             n_hidden_units=1,
@@ -81,15 +84,17 @@ class TestNeuralNetwork(TestCase):
             n_iterations=n_iterations,
         )
         net.fit(X, y)
-        print(net.predict(X))
-        print(np.argmax(net.predict(X), axis=1))
-
-        sk_net = SKLearnNeuralNet(
-            learning_rate_init=learning_rate,
-            max_iter=n_iterations,
+        self.assertEqualArrays(
+            np.argmax(net.predict(X), axis=1) + 1,
+            y,
         )
-        sk_net.fit(X, y)
-        print(sk_net.predict(X))
+        if False:
+            sk_net = SKLearnNeuralNet(
+                learning_rate_init=learning_rate,
+                max_iter=n_iterations,
+            )
+            sk_net.fit(X, y)
+            print(sk_net.predict(X))
 
 
 class SKLearnNeuralNet(MLPClassifier):
