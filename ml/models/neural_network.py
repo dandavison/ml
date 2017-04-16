@@ -196,15 +196,18 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
             grad__L__yhat = (yhat - y) / (yhat * (1 - yhat))  # np.clip((.), EPSILON, inf)
 
             # Update W
-            grad__L__z[:] = 0.0
-            for k in range(K):
-                grad__yhat_k__W_k = z * yhat[k] * (1 - yhat[k])
-                # Last element corresponds to constant offset 1 appended to z
-                # vector; it does not change / has no derivative.
-                grad__yhat_k__z = W[k, :-1] * yhat[k] * (1 - yhat[k])
-                grad__L__z += grad__L__yhat[k] * grad__yhat_k__z
-                W[k, :] -= self.learning_rate * grad__L__yhat[k] * grad__yhat_k__W_k
-
+            # grad__L__z[:] = 0.0
+            # for k in range(K):
+            #     grad__yhat_k__W_k = z * yhat[k] * (1 - yhat[k])
+            #     # Last element corresponds to constant offset 1 appended to z
+            #     # vector; it does not change / has no derivative.
+            #     grad__yhat_k__z = W[k, :-1] * yhat[k] * (1 - yhat[k])
+            #     grad__L__z += grad__L__yhat[k] * grad__yhat_k__z
+            #     W[k, :] -= self.learning_rate * grad__L__yhat[k] * grad__yhat_k__W_k
+            grad__L__z = (W.T * (yhat - y)).sum(axis=1)
+            zz = z.reshape((1, H + 1)).repeat(K, 0)
+            grad__L__W = diag(yhat - y) @ zz
+            W -= self.learning_rate * grad__L__W
 
             # Update V
             # for h in range(H):
