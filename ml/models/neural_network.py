@@ -204,7 +204,7 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
                 map(args, range(it, it + self.batch_size))
             )
             grad__L__V, grad__L__W = [
-                reduce(np.add, grads)
+                reduce(np.add, grads) / len(grads)
                 for grads in zip(*gradients)
             ]
             W -= self.learning_rate * grad__L__W
