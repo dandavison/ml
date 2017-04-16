@@ -7,6 +7,7 @@ from random import shuffle
 from sys import stderr
 
 import numpy as np
+from numpy import diag
 from numpy import inf
 from numpy import tanh
 from scipy.stats import describe
@@ -206,10 +207,13 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
 
 
             # Update V
-            for h in range(H):
-                grad__z_h__V_h = x * (1 - z[h] ** 2)
-                grad__L__V_h = grad__L__z[h] * grad__z_h__V_h
-                V[h, :] -= self.learning_rate * grad__L__V_h
+            # for h in range(H):
+            #     grad__z_h__V_h = x * (1 - z[h] ** 2)
+            #     grad__L__V_h = grad__L__z[h] * grad__z_h__V_h
+            #     V[h, :] -= self.learning_rate * grad__L__V_h
+            xx = x.reshape((1, d + 1)).repeat(H + 1, 0)
+            grad__L__V = diag((1 - z ** 2) * grad__L__z) @ xx
+            V -= self.learning_rate * grad__L__V
 
             z, yhat = self.forward(x, V, W)
 
