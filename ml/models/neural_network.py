@@ -157,21 +157,6 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
         V, W = self.V, self.W
 
         Yhat = self.predict(X[:, :-1])
-
-        L = self.loss(Yhat, Y)
-
-        if DEBUG:
-            lines = [
-                str(X),
-                str(Y),
-                'X: %d x %d' % X.shape,
-                'Y: %d x %d' % Y.shape,
-                'H = %d' % H,
-                'K = %d' % K,
-                'L = %.2f\n' % L,
-            ]
-            print('\n'.join(lines) + '\n\n')
-
         # Allocate
         grad__L__z = np.zeros((H,))
         sample_indices = list(range(n))
@@ -190,10 +175,10 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
             i = sample_indices[it % n]
 
             x = X[i, :]
-            z = tanh(V @ x)
-            z[-1] = 1  # The last row of V is unused; z[-1] must always be 1, just as x[-1].
-            yhat = Yhat[i, :]
             y = Y[i, :]
+            z, yhat = self.forward(x, V, W)
+
+            yhat = Yhat[i, :]
 
             grad__L__yhat = (yhat - y) / np.clip(yhat * (1 - yhat), EPSILON, inf)
 
