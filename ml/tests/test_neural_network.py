@@ -61,10 +61,10 @@ class TestNeuralNetwork(TestCase):
         )
 
     def test_2_1(self):
-        self._do_test_2(1, 1.7538333305760909)
+        self._do_test_2(1, 1.7618753867071062)
 
     def test_2_2(self):
-        self._do_test_2(2, 0.9008814141831486)
+        self._do_test_2(2, 0.90890300205491092)
 
     def _do_test_2(self, n_hidden_units, expected_loss):
         Xy = array([
@@ -98,9 +98,9 @@ class TestNeuralNetwork(TestCase):
             yhat,
             y,
         )
-        _, Y = net.prepare_data(X, y)
+        X, Y = net.prepare_data(X, y)
         self.assertEqual(
-            net.loss(Yhat, Y),
+            net.loss(X, net.V, net.W, Y),
             expected_loss,
         )
         # ~ 0.5s

@@ -124,7 +124,8 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
         Yhat = logistic(self.W @ Z).T
         return Z, Yhat
 
-    def loss(self, Yhat, Y):
+    def loss(self, X, V, W, Y):
+        Z, Yhat = self.forward(X, V, W)
         log_Yhat = log(Yhat)
         log_Yhat_inv = log(1 - Yhat)
 
@@ -170,7 +171,6 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
             self.W = random_normal(0, 0.1, (K, H + 1))
         V, W = self.V, self.W
 
-        Yhat = self.predict(X[:, :-1])
         # Allocate
         grad__L__z = np.zeros((H,))
         sample_indices = list(range(n))
@@ -184,7 +184,7 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
             if it >= self.n_iterations:
                 break
             if it % 10000 == 0:
-                print('%6d/%-6d %.3f' % (it, self.n_iterations, self.loss(Yhat, Y)))
+                print('%6d/%-6d %.3f' % (it, self.n_iterations, self.loss(X, V, W, Y)))
 
             i = sample_indices[it % n]
 
@@ -192,8 +192,7 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
             y = Y[i, :]
             z, yhat = self.forward(x, V, W)
             z = z.ravel()
-
-            yhat = Yhat[i, :]
+            yhat = yhat.ravel()
 
             # Update W
             # grad__L__yhat = (yhat - y) / np.clip(yhat * (1 - yhat), EPSILON, inf)
@@ -218,10 +217,6 @@ class SingleLayerTanhLogisticNeuralNetwork(NeuralNetwork):
             xx = x.reshape((1, d + 1)).repeat(H + 1, 0)
             grad__L__V = diag((1 - z ** 2) * grad__L__z) @ xx
             V -= self.learning_rate * grad__L__V
-
-            z, yhat = self.forward(x, V, W)
-
-            Yhat[i, :] = yhat
 
         return self
 
